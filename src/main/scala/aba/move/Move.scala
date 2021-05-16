@@ -1,5 +1,8 @@
 package aba.move
 
+import aba.framework.Framework
+
+// Companion object, holding all static things
 object Move extends Enumeration {
   type MoveType = Value
   val
@@ -15,21 +18,28 @@ object Move extends Enumeration {
 
   def apply(moveType: MoveType): Move = {
     moveType match {
-      case OB1 => new OB1Move()
-      case OB2 => new OB2Move()
-      case OF1 => new OF1Move()
-      case OF2 => new OF2Move()
-      case PB1 => new PB1Move()
-      case PB2 => new PB2Move()
-      case PF1 => new PF1Move()
-      case PF2 => new PF2Move()
+      case OB1 => OB1Move
+      case OB2 => OB2Move
+      case OF1 => OF1Move
+      case OF2 => OF2Move
+      case PB1 => PB1Move
+      case PB2 => PB2Move
+      case PF1 => PF1Move
+      case PF2 => PF2Move
     }
   }
 
+  implicit class PlayersMove(moveType: MoveType) {
+    def isOpponentsMove: Boolean = !isProponentMove
+    def isProponentMove: Boolean = moveType.toString.startsWith("P")
+  }
 
+  def perform(dummy: Int): Int = {
+    5
+  }
 }
 
+// Abstract class for all moves
 abstract class Move {
-  def isPossible(dummy: Int): Boolean
-  def perform(dummy: Int): Int
+  def isPossible(dummy: Int)(implicit framework: Framework): Boolean
 }

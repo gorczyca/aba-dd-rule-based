@@ -1,3 +1,4 @@
+import aba.framework.Framework
 import aba.move.Move
 
 object Main {
@@ -19,10 +20,16 @@ object Main {
 
     // 4. Call the recursive function
 
-    val move = Move(Move.OB1)
-    move.perform(1)
-    print(Move.values)
 
+    implicit val framework: Framework = new Framework("Wspanialy test") // ???
+    //implicit val framework: Framework = new Framework() // ???
+
+    val move = Move(Move.OB1)
+    move.isPossible(5)
+    // move.perform(1)
+    // print(Move.values)
+    Move.values.foreach(f => println(s"$f is a ${ if (f.isProponentMove) "proponents" else "opponents"  } move"))
+    //???
 
 
   }

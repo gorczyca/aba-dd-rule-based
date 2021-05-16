@@ -1,9 +1,8 @@
 package aba.move
 
-class PF2Move extends Move {
-  override def isPossible(dummy: Int): Boolean = true
+import aba.framework.Framework
 
-  override def perform(dummy: Int): Int = {
-    println("PF2 move")
-    100
-  }}
+object PF2Move extends Move {
+  override def isPossible(dummy: Int)(implicit framework: Framework): Boolean = ???
+
+}
