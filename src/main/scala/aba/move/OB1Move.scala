@@ -1,12 +1,8 @@
 package aba.move
 
 import aba.framework.Framework
+import aba.reasoner.{DisputeState, PotentialMove}
 
 object OB1Move extends Move {
-
-  override def isPossible(dummy: Int)(implicit framework: Framework): Boolean = {
-    framework.printSth()
-    true
-  }
-
+  override def isPossible(dState: DisputeState)(implicit framework: Framework): Set[PotentialMove] = ???
 }

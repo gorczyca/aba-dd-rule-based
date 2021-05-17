@@ -1,6 +1,7 @@
 package aba.move
 
 import aba.framework.Framework
+import aba.reasoner.{DisputeState, PotentialMove}
 
 // Companion object, holding all static things
 object Move extends Enumeration {
@@ -29,6 +30,8 @@ object Move extends Enumeration {
     }
   }
 
+  def withNameOpt(moveString: String): Option[Value] = values.find(_.toString.equalsIgnoreCase(moveString))
+
   implicit class PlayersMove(moveType: MoveType) {
     def isOpponentsMove: Boolean = !isProponentMove
     def isProponentMove: Boolean = moveType.toString.startsWith("P")
@@ -41,5 +44,6 @@ object Move extends Enumeration {
 
 // Abstract class for all moves
 abstract class Move {
-  def isPossible(dummy: Int)(implicit framework: Framework): Boolean
+  //def isPossible(dState: DisputeState)(implicit framework: Framework): Set[PotentialMove]
+  def isPossible(dState: DisputeState)(implicit framework: Framework): Set[PotentialMove]
 }
