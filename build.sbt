@@ -4,5 +4,6 @@ version := "0.1"
 
 scalaVersion := "2.13.5"
 
-libraryDependencies += "org.typelevel" %% "cats-core" % "2.3.0"
+libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
+
 
