@@ -18,20 +18,20 @@ class Framework (val rules: Set[Rule],
                  val constraints: Set[Literal],
                  val alphabet: Map[String, Literal]
                 ) {
-  def initialDState: DisputeState = new DisputeState(goals.map(g => LiteralArgument(g)))
+  def initialDState: DisputeState = new DisputeState(goals)
 
   // helpers
   def contrariesOf(literal: Literal): Set[Literal] = contraries.filter(_.assumption == literal).collect(_.contrary)
 
   def contrariesOf(literals: Set[Literal]): Set[Literal] = contraries.filter(ctr => literals.contains(ctr.assumption)).collect(_.contrary)
 
-  def bRuleArgs(implicit dState: DisputeState): Set[RuleArgument] = dState.b.collect { case ruleArg: RuleArgument => ruleArg }
+  def bRuleArgs(implicit dState: DisputeState): Set[RuleArgument] = dState.bRuleArgs
 
-  def bLitArgs(implicit dState: DisputeState): Set[LiteralArgument] = dState.b.collect { case litArg: LiteralArgument => litArg }
+  def bLitArgs(implicit dState: DisputeState): Set[LiteralArgument] = dState.bLitArgs
 
-  def pRuleArgs(implicit dState: DisputeState): Set[RuleArgument] = dState.p.collect { case ruleArg: RuleArgument => ruleArg }
+  def pRuleArgs(implicit dState: DisputeState): Set[RuleArgument] = dState.pRuleArgs
 
-  def pLitArgs(implicit dState: DisputeState): Set[LiteralArgument] = dState.p.collect { case litArg: LiteralArgument => litArg }
+  def pLitArgs(implicit dState: DisputeState): Set[LiteralArgument] = dState.pLitArgs
 
 
   // Paper specific
@@ -62,6 +62,10 @@ class Framework (val rules: Set[Rule],
       .intersect(culprits ++ contrariesOf(rule.body) ++ constraints ++ contrariesOf(defences)).nonEmpty
     )
   }
+
+  def remainingNonBlockedPRules(implicit dState: DisputeState): Set[Rule] = remainingRulesP -- blockedRulesP
+
+  def remainingNonBlockedBRules(implicit dState: DisputeState): Set[Rule] = remainingRulesB -- blockedRulesB
 
   def blockedAssumptionsP(implicit dState: DisputeState): Set[Literal] = {
     assumptions.filter(ass => (contrariesOf(ass) ++ culprits ++ contrariesOf(defences) ++ constraints).contains(ass))
@@ -114,8 +118,13 @@ class Framework (val rules: Set[Rule],
     completePiecesRecB(assumptionsArgs)
   }
 
-  def unexpandedPStatements(implicit dState: DisputeState): Set[Literal] = {
-    pLitArgs.map(_.lit).diff(pRuleArgs.map(_.rule.head)) // diff = filterNot + contains
+// TODO:
+//  def unexpandedPStatements(implicit dState: DisputeState): Set[Literal] = {
+//    pLitArgs.map(_.lit).diff(pRuleArgs.map(_.rule.head)) // diff = filterNot + contains
+//  }
+
+  def unexpandedPStatements(implicit dState: DisputeState): Set[Argument] = {
+    pLitArgs.filterNot(litArg => pRuleArgs.map(_.rule.head).contains(litArg.lit)).toSet[Argument]
   }
 
   def fullyExpandedStatements(implicit dState: DisputeState): Set[Literal] = {
