@@ -1,6 +1,5 @@
 package aba.framework
 
-import aba.{Argument, DisputeState}
 import aba.fileParser.FileParser
 import aba.reasoner.{Argument, DisputeState, LiteralArgument, RuleArgument}
 
@@ -104,7 +103,7 @@ class Framework (val rules: Set[Rule],
       // val completeRuleArgs = args.collect { case ruleArg: RuleArgument => ruleArg }
 
       val newRuleArgs = bRuleArgs.filter(arg => arg.rule.body.subsetOf(completeLitArgs.map(_.lit)))
-      val newLitArgs = bLitArgs.filter(arg => nonAssumptionsLiterals.contains(arg.lit) && arg.bParents.intersect(args).nonEmpty)
+      val newLitArgs = bLitArgs.filter(arg => nonAssumptionsLiterals.contains(arg.lit) && arg.parents.intersect(args).nonEmpty)
 
       if (newRuleArgs.isEmpty && newLitArgs.isEmpty) args // do this as long as new arguments are created
       else completePiecesRecB(args ++ newRuleArgs ++ newLitArgs)

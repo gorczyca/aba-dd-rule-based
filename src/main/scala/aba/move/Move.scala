@@ -36,14 +36,10 @@ object Move extends Enumeration {
     def isOpponentsMove: Boolean = !isProponentMove
     def isProponentMove: Boolean = moveType.toString.startsWith("P")
   }
-
-  def perform(dummy: Int): Int = {
-    5
-  }
 }
 
 // Abstract class for all moves
 abstract class Move {
   //def isPossible(dState: DisputeState)(implicit framework: Framework): Set[PotentialMove]
-  def isPossible(dState: DisputeState)(implicit framework: Framework): Set[PotentialMove]
+  def isPossible(implicit framework: Framework, dState: DisputeState): Set[PotentialMove]
 }

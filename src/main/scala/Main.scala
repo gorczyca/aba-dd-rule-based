@@ -1,7 +1,7 @@
 import aba.framework.Framework
 import aba.move.Move
 import aba.move.Move.MoveType
-import aba.reasoner.DisputeState
+import aba.reasoner.{Argument, DisputeState, LiteralArgument, RuleArgument}
 
 import scala.annotation.tailrec
 
@@ -38,11 +38,25 @@ object Main {
     // val x  = Calculator("2+2")
     val input = "examples/ex9.4.21.aba"
     implicit val frameworkAba: Framework = Framework("aba", input)
+    //implicit val initialState: DisputeState = frameworkAba.initialDState
     val initialState = frameworkAba.initialDState
 
-    disputeDerivation(frameworkAba.initialDState :: Nil)
-    //val frameworkApx = Framework("apx", "examples/framework1.apx")
-    ???
+//    val literal1 = frameworkAba.alphabet.values.head
+//    val rule1 = frameworkAba.rules.head
+//
+//    val arg1 = LiteralArgument(literal1)
+//    val arg2 = LiteralArgument(literal1)
+//
+//    val ruleArg1 = RuleArgument(rule1)
+//    val ruleArg2 = RuleArgument(rule1)
+//
+//    val chwilaPrawdy: Set[Argument] = Set(arg1, arg2, ruleArg1, ruleArg2)
+
+
+
+
+    disputeDerivation(frameworkAba.initialDState :: Nil)  // way of creating a list
+
 
   }
 
@@ -53,8 +67,10 @@ object Main {
     //implicit def stringToMoveType(moveString: String): MoveType = Move.values.find(_.toString.equalsIgnoreCase(moveString))
 
 
-    val lastState = derivation.last   // get last derivation state
-    val possibleMoves = Move.values.flatMap(x => Move(x).isPossible(lastState)) // get possible moves
+    implicit val lastState: DisputeState = derivation.last   // get last derivation state
+    val possibleMoves = Move.values.flatMap(x => Move(x).isPossible) // get possible moves
+
+    val newState = possibleMoves.head.perform
 
 
 
@@ -65,7 +81,7 @@ object Main {
     //  backtrack, perform new move, show possible moves, etc
     //
 
-    disputeDerivation(derivation)
+    disputeDerivation(derivation :+ newState)
 
   }
 
