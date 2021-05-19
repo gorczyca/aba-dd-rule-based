@@ -3,6 +3,8 @@ package aba.move
 import aba.framework.Framework
 import aba.reasoner.{DisputeState, PotentialMove}
 
+import scala.collection.SortedSet
+
 // Companion object, holding all static things
 object Move extends Enumeration {
   type MoveType = Value
@@ -29,6 +31,9 @@ object Move extends Enumeration {
       case PF2 => PF2Move
     }
   }
+
+  def getPossibleMoves(implicit framework: Framework, dState: DisputeState): SortedSet[PotentialMove] =
+    Move.values.flatMap(x => Move(x).isPossible)
 
   def withNameOpt(moveString: String): Option[Value] = values.find(_.toString.equalsIgnoreCase(moveString))
 
