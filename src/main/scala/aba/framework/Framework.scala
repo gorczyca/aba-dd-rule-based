@@ -77,10 +77,11 @@ class Framework (val rules: Set[Rule],
     def completePiecesRecP(args: Set[Argument])(implicit dState: DisputeState, nonAssumptionsLiterals: Set[Literal]): Set[Argument] = {
 
       val completeLitArgs = args.collect { case litArg: LiteralArgument => litArg }
-      // val completeRuleArgs = args.collect { case ruleArg: RuleArgument => ruleArg }
+      val completeRuleArgs = args.collect { case ruleArg: RuleArgument => ruleArg }
 
-      val newRuleArgs = pRuleArgs.filter(arg => arg.rule.body.subsetOf(completeLitArgs.map(_.lit)))
-      val newLitArgs = pLitArgs.filter(arg => nonAssumptionsLiterals.contains(arg.lit) && arg.pParents.intersect(args).nonEmpty)
+      val newRuleArgs = pRuleArgs.filter(arg => arg.rule.body.subsetOf(completeLitArgs.map(_.lit))) -- completeRuleArgs // remove old args, consider new rule args only
+      val newLitArgs = pLitArgs.filter(arg => nonAssumptionsLiterals.contains(arg.lit) && arg.pParents.intersect(args).nonEmpty)  -- completeLitArgs // same
+
 
       if (newRuleArgs.isEmpty && newLitArgs.isEmpty) args // do this as long as new arguments are created
       else completePiecesRecP(args ++ newRuleArgs ++ newLitArgs)
@@ -100,10 +101,10 @@ class Framework (val rules: Set[Rule],
     def completePiecesRecB(args: Set[Argument])(implicit dState: DisputeState, nonAssumptionsLiterals: Set[Literal]): Set[Argument] = {
 
       val completeLitArgs = args.collect { case litArg: LiteralArgument => litArg }
-      // val completeRuleArgs = args.collect { case ruleArg: RuleArgument => ruleArg }
+      val completeRuleArgs = args.collect { case ruleArg: RuleArgument => ruleArg }
 
-      val newRuleArgs = bRuleArgs.filter(arg => arg.rule.body.subsetOf(completeLitArgs.map(_.lit)))
-      val newLitArgs = bLitArgs.filter(arg => nonAssumptionsLiterals.contains(arg.lit) && arg.parents.intersect(args).nonEmpty)
+      val newRuleArgs = bRuleArgs.filter(arg => arg.rule.body.subsetOf(completeLitArgs.map(_.lit))) -- completeRuleArgs  // remove arguments that were already obtained before
+      val newLitArgs = bLitArgs.filter(arg => nonAssumptionsLiterals.contains(arg.lit) && arg.parents.intersect(args).nonEmpty) -- completeLitArgs //
 
       if (newRuleArgs.isEmpty && newLitArgs.isEmpty) args // do this as long as new arguments are created
       else completePiecesRecB(args ++ newRuleArgs ++ newLitArgs)
