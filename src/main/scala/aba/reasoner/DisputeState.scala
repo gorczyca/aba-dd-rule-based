@@ -11,6 +11,12 @@ object DisputeState {
     if (move.isProponentMove) new DisputeState(previousState.id + 1, Some(move), previousState.p ++ t, previousState.b ++ t)
     else new DisputeState(previousState.id + 1, Some(move), previousState.p, previousState.b ++ t)
   }
+
+  def apply(goals: Set[Literal]): DisputeState = {
+    val goalsArgs = goals.map(LiteralArgument).toSet[Argument] // TODO:
+    new DisputeState(0, None, goalsArgs, goalsArgs)
+  }
+
 }
 
 
@@ -19,8 +25,6 @@ case class DisputeState(id: Int,
                         p: Set[Argument],
                         b: Set[Argument]
                        ) {
-
-  def this(goals: Set[Literal]) = this(0, None, goals.map(LiteralArgument), Set.empty)
 
   def bRuleArgs: Set[RuleArgument] = b.collect { case ruleArg: RuleArgument => ruleArg }
 

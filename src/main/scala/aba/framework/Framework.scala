@@ -17,7 +17,7 @@ class Framework (val rules: Set[Rule],
                  val constraints: Set[Literal],
                  val alphabet: Map[String, Literal]
                 ) {
-  def initialDState: DisputeState = new DisputeState(goals)
+  def initialDState: DisputeState = DisputeState(goals)
 
   // helpers
   def contrariesOf(literal: Literal): Set[Literal] = contraries.filter(_.assumption == literal).collect(_.contrary)
