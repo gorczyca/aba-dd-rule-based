@@ -30,4 +30,9 @@ case class DisputeState(id: Int,
 
   def pLitArgs: Set[LiteralArgument] = p.collect { case litArg: LiteralArgument => litArg }
 
+  override def toString: String = s"P: ${p.mkString(",")}\nB\\P: ${b.diff(p).mkString(",")}"
+
+
+
+
 }

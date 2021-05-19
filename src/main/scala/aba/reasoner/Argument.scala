@@ -22,6 +22,8 @@ case class LiteralArgument(lit: Literal) extends Argument {
   // same as above
   override def hashCode(): Int = lit.hashCode()
 
+  override def toString: String = lit.toString
+
   override def parents(implicit dState: DisputeState): Set[Argument] =
     dState.b.collect { case ruleArg: RuleArgument => ruleArg }.filter(_.rule.head == this.lit).toSet[Argument]
 
@@ -45,6 +47,9 @@ case class RuleArgument(rule: Rule) extends Argument {
 
   override def parents(implicit dState: DisputeState): Set[Argument] =
     dState.b.collect { case litArg: LiteralArgument => litArg }.filter(litArg => this.rule.body.contains(litArg.lit)).toSet[Argument]
+
+  // toString called implicitly
+  override def toString: String = rule.toString
 
 //  override def pParents(implicit dState: DisputeState): Set[Argument] =
 //    dState.p.collect { case litArg: LiteralArgument => litArg }.filter(litArg => this.rule.body.contains(litArg.lit)).toSet[Argument]

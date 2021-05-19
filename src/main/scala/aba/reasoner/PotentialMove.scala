@@ -19,7 +19,25 @@ case class PotentialMove(ruleArgument: Option[RuleArgument],
     DisputeState(moveType, totalArguments)
   }
 
-  // TODO:
-  override def toString: String = super.toString
+
+  override def toString: String = {
+
+    // TODO:
+    val additionalInfoStr = additionalInfo match {
+      case Some(addInfo) => s" ($addInfo)"
+      case _ => ""
+    }
+
+    val ruleArgStr = ruleArgument match {
+      case Some(ruleArg) => s"Rule: $ruleArg"
+      case _ => ""
+    }
+
+    val litArgStr = if (literalArguments.isEmpty) "" else s"Literals: ${literalArguments.mkString(",")}"
+
+    s"$moveType$additionalInfoStr: $ruleArgStr $litArgStr"
+  }
+
+
 
 }
