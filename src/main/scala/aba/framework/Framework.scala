@@ -157,4 +157,31 @@ class Framework (val rules: Set[Rule],
   }
 
   def culpritsCandidates(implicit dState: DisputeState): Set[Literal] = (assumptions intersect bLitArgs.map(_.lit)) -- (defences ++ culprits)
+
+
+  def decorateRules(implicit dState: DisputeState): Set[(Rule, String)] = ???
+
+
+  def decorateArguments(implicit dState: DisputeState): Set[(Argument, String)] = {
+
+    // TODO: for performance reasons, evaluate it once, do not calculate it every time
+    val culprits_ = culprits
+
+
+    def isProponentPiece(arg: Argument): String = if (dState.p.contains(arg)) "$" else ""
+    def isCompletePiece(arg: Argument): String = if (completePiecesP.contains(arg)) "**" else if (completePiecesB.contains(arg)) "*" else ""
+    def isUnexpandedStatementP(arg: Argument): String = if (unexpandedPStatements.contains(arg)) "\"" else ""
+    def isAssumptionOrFullyExpandedStatement(arg: Argument): String = {
+      arg match {
+        case litArg: LiteralArgument => if ((assumptions ++ fullyExpandedStatements).contains(litArg.lit)) "^" else ""
+        case _ => ""
+      }
+    }
+
+    val decFunctions = isProponentPiece _ :: isCompletePiece _ :: isUnexpandedStatementP _ :: isAssumptionOrFullyExpandedStatement _ :: Nil
+
+    dState.b.map( arg =>
+      (arg, decFunctions.foldLeft("")((currDec, func) => currDec + func(arg)) + arg)
+    )
+  }
 }

@@ -66,20 +66,14 @@ object Main {
     // caution
     //implicit def stringToMoveType(moveString: String): MoveType = Move.values.find(_.toString.equalsIgnoreCase(moveString))
 
-
     implicit val lastState: DisputeState = derivation.last   // get last derivation state
-    val possibleMoves = Move.values.flatMap(x => Move(x).isPossible) // get possible moves
+
+    println(framework.decorateArguments.map(_._2).mkString(" ; "))
+
+    val possibleMoves = Move.getPossibleMoves
 
     val newState = possibleMoves.head.perform
 
-
-
-    // get possible moves by enumerating through enum moves, creating by factory the move objects, returning enums that are possible
-
-    // get input from user
-    // input match {
-    //  backtrack, perform new move, show possible moves, etc
-    //
 
     disputeDerivation(derivation :+ newState)
 
