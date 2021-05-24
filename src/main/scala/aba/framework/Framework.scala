@@ -159,10 +159,44 @@ class Framework (val rules: Set[Rule],
   def culpritsCandidates(implicit dState: DisputeState): Set[Literal] = (assumptions intersect bLitArgs.map(_.lit)) -- (defences ++ culprits)
 
 
-  def decorateRules(implicit dState: DisputeState): Set[(Rule, String)] = ???
+  def decorateAssumptions(implicit dState: DisputeState): Seq[(Literal, String)] = {
+    // TODO: improve performance
+    def isProponentAssumption(lit: Literal): String = if (dState.pLitArgs.map(_.lit).contains(lit)) "&" else ""
+    // TODO:
+    def isOpponentAssumption(lit: Literal): String = if ((dState.bLitArgs -- dState.pLitArgs).map(_.lit).contains(lit)) "@" else ""
+    def isBlockedForP(lit: Literal): String = if (blockedAssumptionsP.contains(lit)) "~" else ""
+    def isCulprit(lit: Literal): String = if (culprits.contains(lit)) "--" else ""
+
+    val decFunctions = isProponentAssumption _ :: isOpponentAssumption _ :: isBlockedForP _ :: isCulprit _ :: Nil
+
+    assumptions.toSeq.sortBy(_.id).map( ass =>
+      (ass, decFunctions.foldLeft("")((currDec, func) => currDec + func(ass)) + ass)
+    )
+  }
 
 
-  def decorateArguments(implicit dState: DisputeState): Set[(Argument, String)] = {
+  def decorateRules(implicit dState: DisputeState): Seq[(Rule, String)] = {
+    // TODO: performance
+
+    //val inconsistentRules = rules.filter(rule => contrariesOf(rule.body + rule.head).intersect(rule.body).nonEmpty)
+
+    def isRuleUsedByP(rule: Rule): String = if (dState.pRuleArgs.map(_.rule).contains(rule)) "&" else ""
+    def isRuleUsedByOpponent(rule: Rule): String = if ((dState.bRuleArgs -- dState.pRuleArgs).map(_.rule).contains(rule)) "@" else ""
+    // blocked because of inconsistencies, constraints / contraries of defences in body TODO: should head be tested as well?
+    def isRuleBlocked1(rule: Rule): String = if (contrariesOf(rule.body + rule.head).intersect(rule.body).nonEmpty ||
+      (rule.body + rule.head).intersect(constraints ++ contrariesOf(defences)).nonEmpty) "~" else ""
+    def isRuleBlocked2(rule: Rule): String = if (rule.body.intersect(culprits).nonEmpty) "--" else ""
+
+    val decFunctions = isRuleUsedByP _ :: isRuleUsedByOpponent _ :: isRuleBlocked1 _ :: isRuleBlocked2 _ :: Nil
+
+    rules.toSeq.sortBy(_.head.id).map( rule =>
+      (rule, decFunctions.foldLeft("")((currDec, func) => currDec + func(rule)) + rule)
+    )
+
+  }
+
+
+  def decorateArguments(implicit dState: DisputeState): Seq[(Argument, String)] = {
 
     // TODO: for performance reasons, evaluate it once, do not calculate it every time
     val culprits_ = culprits
@@ -180,7 +214,10 @@ class Framework (val rules: Set[Rule],
 
     val decFunctions = isProponentPiece _ :: isCompletePiece _ :: isUnexpandedStatementP _ :: isAssumptionOrFullyExpandedStatement _ :: Nil
 
-    dState.b.map( arg =>
+    dState.b.toSeq.sortBy {
+      case litArg: LiteralArgument => litArg.lit.id
+      case ruleArg: RuleArgument => ruleArg.rule.head.id
+    }.map( arg =>
       (arg, decFunctions.foldLeft("")((currDec, func) => currDec + func(arg)) + arg)
     )
   }
