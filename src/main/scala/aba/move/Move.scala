@@ -1,5 +1,7 @@
 package aba.move
 
+import scala.language.implicitConversions
+
 import aba.framework.Framework
 import aba.reasoner.{DisputeState, PotentialMove}
 
@@ -35,7 +37,10 @@ object Move extends Enumeration {
   def getPossibleMoves(implicit framework: Framework, dState: DisputeState): SortedSet[PotentialMove] =
     Move.values.flatMap(x => Move(x).isPossible)
 
-  def withNameOpt(moveString: String): Option[Value] = values.find(_.toString.equalsIgnoreCase(moveString))
+  implicit def fromString(moveString: String): MoveType = values.find(_.toString.equalsIgnoreCase(moveString)) match {
+    case Some(value) => value
+    case None => throw new Exception("TODO:")
+  }
 
   implicit class PlayersMove(moveType: MoveType) {
     def isOpponentsMove: Boolean = !isProponentMove
