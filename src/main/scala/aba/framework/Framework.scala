@@ -221,4 +221,13 @@ class Framework (val rules: Set[Rule],
       (arg, decFunctions.foldLeft("")((currDec, func) => currDec + func(arg)) + arg)
     )
   }
+
+  def disputeStateToString(implicit dState: DisputeState): String = {
+    // TODO: is it OK to assume that always a complete argument is a LiteralArgument?
+    val goalsAndCulprContrWOCompleteArgs = completePiecesB.collect {
+      case litArg: LiteralArgument => litArg.lit
+      case ruleArg: RuleArgument => ruleArg.rule.head   // TODO?
+    } ++ contrariesOf(culprits)
+    s"({${decorateArguments.map(_._2).mkString(" ; ")}}, {${goalsAndCulprContrWOCompleteArgs.mkString(" ; ")}}, {${defences.mkString(" ; ")}}, {${culprits.mkString(" ; ")}})"
+  }
 }
