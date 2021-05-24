@@ -26,6 +26,10 @@ s :- q,e.
 r :- q,e.
 q :- s,b.
 t :- a,c.
+% remove, testing inconsistent rule
+%q :- b,t.
+% how about a rule e.g.
+% b:-t.
 
 % Constraints
 !t.
