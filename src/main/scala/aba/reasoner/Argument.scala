@@ -5,7 +5,8 @@ import aba.framework.{Literal, Rule}
 abstract class Argument {
   def parents(implicit dState: DisputeState): Set[Argument]
   def pParents(implicit dState: DisputeState): Set[Argument] = parents intersect dState.p
-  def children(implicit dState: DisputeState): Set[Argument] = dState.b.filter(_.parents.contains(this))
+  //def children(implicit dState: DisputeState): Set[Argument] = dState.b.filter(_.parents.contains(this))
+  def children(implicit dState: DisputeState): Set[Argument]
   def pChildren(implicit dState: DisputeState): Set[Argument] = children intersect dState.p
 }
 
@@ -29,6 +30,8 @@ case class LiteralArgument(lit: Literal) extends Argument {
 
 //  override def pParents(implicit dState: DisputeState): Set[Argument] =
 //    dState.p.collect { case ruleArg: RuleArgument => ruleArg }.filter(_.rule.head == this.lit).toSet[Argument]
+  override def children(implicit dState: DisputeState): Set[Argument] =
+    dState.b.collect { case ruleArg: RuleArgument => ruleArg }.filter(_.rule.body.contains(this.lit)).toSet[Argument]
 }
 
 
@@ -53,5 +56,7 @@ case class RuleArgument(rule: Rule) extends Argument {
 
 //  override def pParents(implicit dState: DisputeState): Set[Argument] =
 //    dState.p.collect { case litArg: LiteralArgument => litArg }.filter(litArg => this.rule.body.contains(litArg.lit)).toSet[Argument]
+  override def children(implicit dState: DisputeState): Set[Argument] =
+    dState.b.collect { case litArg: LiteralArgument => litArg }.filter(litArg => this.rule.head == litArg.lit).toSet[Argument]
 }
 
