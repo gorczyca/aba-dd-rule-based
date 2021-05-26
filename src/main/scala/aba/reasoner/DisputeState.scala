@@ -6,15 +6,15 @@ import aba.move.Move.MoveType
 
 object DisputeState {
   // this factory method was created because the class constructor has execute "this" as the first statement
-  def apply(move: MoveType, t: Set[Argument])(implicit previousState: DisputeState): DisputeState = {
+  def apply(move: MoveType, t: Set[Argument], argument: Argument)(implicit previousState: DisputeState): DisputeState = {
 
-    if (move.isProponentMove) new DisputeState(previousState.id + 1, Some(move), previousState.p ++ t, previousState.b ++ t)
-    else new DisputeState(previousState.id + 1, Some(move), previousState.p, previousState.b ++ t)
+    if (move.isProponentMove) new DisputeState(previousState.id + 1, Some(move), previousState.p ++ t, previousState.b ++ t, Some(argument))
+    else new DisputeState(previousState.id + 1, Some(move), previousState.p, previousState.b ++ t, Some(argument))
   }
 
   def apply(goals: Set[Literal]): DisputeState = {
     val goalsArgs = goals.map(LiteralArgument).toSet[Argument] // TODO:
-    new DisputeState(0, None, goalsArgs, goalsArgs)
+    new DisputeState(0, None, goalsArgs, goalsArgs, None)
   }
 
 }
@@ -23,7 +23,8 @@ object DisputeState {
 case class DisputeState(id: Int,
                         move: Option[MoveType],
                         p: Set[Argument],
-                        b: Set[Argument]
+                        b: Set[Argument],
+                        argument: Option[Argument]
                        ) {
 
   def bRuleArgs: Set[RuleArgument] = b.collect { case ruleArg: RuleArgument => ruleArg }
@@ -35,8 +36,4 @@ case class DisputeState(id: Int,
   def pLitArgs: Set[LiteralArgument] = p.collect { case litArg: LiteralArgument => litArg }
 
   override def toString: String = s"P: ${p.mkString(",")}\nB\\P: ${b.diff(p).mkString(",")}"
-
-
-
-
 }

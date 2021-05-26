@@ -5,6 +5,8 @@ import scala.language.implicitConversions
 import aba.framework.Framework
 import aba.reasoner.{DisputeState, PotentialMove}
 
+import scala.math.Ordering.Implicits.seqOrdering
+
 // Companion object, holding all static things
 object Move extends Enumeration {
   type MoveType = Value
@@ -34,8 +36,7 @@ object Move extends Enumeration {
 
   // TODO: change MoveType to Value?
   def getPossibleMoves(implicit framework: Framework, dState: DisputeState): Map[MoveType, Seq[PotentialMove]] = {
-    // TODO: flatMap + groupBy seems silly ??
-    Move.values.flatMap(x => Move(x).isPossible).groupBy(_.moveType) map { case (mType, set) => (mType, set.toSeq) }
+    Move.values.map(x => (x, Move(x).isPossible)).filter(_._2.nonEmpty).toMap
   }
 
   implicit def fromString(moveString: String): MoveType = values.find(_.toString.equalsIgnoreCase(moveString)) match {
@@ -49,7 +50,7 @@ object Move extends Enumeration {
   }
 
   def possibleMovesToString(possibleMoves: Map[MoveType, Seq[PotentialMove]]): String = {
-    possibleMoves.map {
+    possibleMoves.toSeq.sortBy(_._1).map {
       case (mType, moves) => s"$mType:\n" + moves.zipWithIndex.map {
         case (pMove, index) => s"\t$index: $pMove"
       }.mkString("\n")
@@ -60,5 +61,5 @@ object Move extends Enumeration {
 // Abstract class for all moves
 abstract class Move {
   //def isPossible(dState: DisputeState)(implicit framework: Framework): Set[PotentialMove]
-  def isPossible(implicit framework: Framework, dState: DisputeState): Set[PotentialMove]
+  def isPossible(implicit framework: Framework, dState: DisputeState): Seq[PotentialMove]
 }

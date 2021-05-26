@@ -68,24 +68,29 @@ object Main {
     implicit val lastState: DisputeState = derivation.last   // get last derivation state
 
     println(s"${lastState.id}. ${lastState.move match {
-      case Some(value) => value
-      case _ => "Init"
+      case Some(value) => s"$value: ${lastState.argument match {
+        case Some(arg) => s"$arg"
+        case _ => ""
+      }}"
+      case _ => "(init)"
     }}")
-    // println(s"Arguments:\n\t${framework.decorateArguments.map(_._2).mkString(" ; ")}\n")
+
+    //  println(s"Arguments:\n\t${framework.decorateArguments.map(_._2).mkString(" ; ")}\n")
     println(s"Dispute state:\n\t${framework.disputeStateToString}\n")
     println(s"Assumptions: \n\t${framework.decorateAssumptions.map(_._2).mkString(" ; ")}\n")
     println(s"Rules:\n\t${framework.decorateRules.map(_._2).mkString(" ; ")}\n")
 
     implicit val possibleMoves: Map[MoveType, Seq[PotentialMove]] = Move.getPossibleMoves
 
-
+    framework.checkIfOver match {
+      case Some(info) => println(info)
+      case _ =>
+    }
 
     val (newDerivation, stop) = progressDerivation(derivation)
-    if (stop) return newDerivation  // TODO: why I need return here
+    if (stop) return newDerivation  // TODO: why I need return here -- something with inline ifs and returns
 
-    //disputeDerivation(derivation :+ newState)
     disputeDerivation(newDerivation)
-
   }
 
   def progressDerivation(derivation: List[DisputeState])(implicit framework: Framework,
@@ -108,9 +113,13 @@ object Main {
       case s"$move" if moveTypesStrings.contains(move) => (derivation :+ possibleMoves(move).random.perform, false) // implicit conversion
       case s"$move $x" if moveTypesStrings.contains(move.toLowerCase) && digitRegex.matches(x) =>
         val movesNo = x.toInt
-        val movesOfType = possibleMoves(move)
-        if (movesOfType.size >= movesNo + 1) (derivation :+ movesOfType(movesNo).perform, false) // implicit conversion
-        else println(s"Wrong index. $move"); (derivation, false)
+        val movesOfType = possibleMoves(move) // implicit conversion
+        if (movesOfType.size >= movesNo + 1) {
+           (derivation :+ movesOfType(movesNo).perform, false)
+        } else {
+          println(s"Wrong index. $move")
+          (derivation, false)
+        }
 
       case _ => println("Error"); (derivation, false)
     }

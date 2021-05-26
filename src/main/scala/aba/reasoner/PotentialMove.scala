@@ -4,6 +4,7 @@ import aba.move.Move.MoveType
 
 
 case class PotentialMove(ruleArgument: Option[RuleArgument],
+                         literalArgument: Option[LiteralArgument],
                          literalArguments: Set[LiteralArgument],
                          moveType: MoveType,
                          additionalInfo: Option[String]) extends Ordered[PotentialMove] {
@@ -16,7 +17,14 @@ case class PotentialMove(ruleArgument: Option[RuleArgument],
       case None => literalArguments.toSet[Argument]   // TODO: do it better than toSet[Argument]
     }
 
-    DisputeState(moveType, totalArguments)
+    val arg = (ruleArgument, literalArgument) match {
+      case (Some(_), Some(_)) => throw new IllegalArgumentException("Potential argument must either be literal or rule based.")
+      case (Some(ruleArg), None) => ruleArg
+      case (None, Some(litArg)) => litArg
+      case _ => throw new IllegalArgumentException("Potential argument must either be literal or rule based.")
+    }
+
+    DisputeState(moveType, totalArguments, arg)
   }
 
 

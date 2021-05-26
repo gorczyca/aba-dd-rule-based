@@ -1,7 +1,8 @@
 package aba.framework
 
 import aba.fileParser.FileParser
-import aba.reasoner.{Argument, DisputeState, LiteralArgument, RuleArgument}
+import aba.move.Move.MoveType
+import aba.reasoner.{Argument, DisputeState, LiteralArgument, PotentialMove, RuleArgument}
 
 import scala.annotation.tailrec
 
@@ -141,13 +142,12 @@ class Framework (val rules: Set[Rule],
       val playedBlockedLitArgs = args.collect { case litArg: LiteralArgument => litArg }
 
       //val newLitArgs = fullyExpandedStatements.diff() bLitArgs.filter(arg => nonAssumptionsLiterals.contains(arg.lit) && arg.bParents.intersect(args).nonEmpty)
-      val newLitArgs = fullyExpandedStatementsLitArgs.filterNot(arg => (bRuleArgs -- playedBlockedRuleArgs).map(_.rule.head).contains(arg.lit))
-      val newRuleArgs = bRuleArgs.filter(arg => arg.rule.body.intersect(playedBlockedLitArgs.map(_.lit)).nonEmpty)
+      val newLitArgs = fullyExpandedStatementsLitArgs.filterNot(arg => (bRuleArgs -- playedBlockedRuleArgs).map(_.rule.head).contains(arg.lit)) -- playedBlockedLitArgs
+      val newRuleArgs = bRuleArgs.filter(arg => arg.rule.body.intersect(playedBlockedLitArgs.map(_.lit)).nonEmpty) -- playedBlockedRuleArgs
 
       if (newRuleArgs.isEmpty && newLitArgs.isEmpty) args // do this as long as new arguments are created
       else playedBlockedPiecesRec(args ++ newRuleArgs ++ newLitArgs)
     }
-
 
     implicit val fullyExpandedStatementsLitArgs: Set[LiteralArgument] = bLitArgs.filter(arg => fullyExpandedStatements.contains(arg.lit))
 
@@ -183,11 +183,19 @@ class Framework (val rules: Set[Rule],
     def isRuleUsedByP(rule: Rule): String = if (dState.pRuleArgs.map(_.rule).contains(rule)) "&" else ""
     def isRuleUsedByOpponent(rule: Rule): String = if ((dState.bRuleArgs -- dState.pRuleArgs).map(_.rule).contains(rule)) "@" else ""
     // blocked because of inconsistencies, constraints / contraries of defences in body TODO: should head be tested as well?
-    def isRuleBlocked1(rule: Rule): String = if (contrariesOf(rule.body + rule.head).intersect(rule.body).nonEmpty ||
-      (rule.body + rule.head).intersect(constraints ++ contrariesOf(defences)).nonEmpty) "~" else ""
-    def isRuleBlocked2(rule: Rule): String = if (rule.body.intersect(culprits).nonEmpty) "--" else ""
 
-    val decFunctions = isRuleUsedByP _ :: isRuleUsedByOpponent _ :: isRuleBlocked1 _ :: isRuleBlocked2 _ :: Nil
+    //def isRuleBlocked1(rule: Rule): String = if (contrariesOf(rule.body + rule.head).intersect(rule.body  + rule.head).nonEmpty ||
+    //    (rule.body + rule.head).intersect(constraints ++ contrariesOf(defences)).nonEmpty) "~" else ""
+    //def isRuleBlocked2(rule: Rule): String = if (rule.body.intersect(culprits).nonEmpty) "--" else ""
+    // TODO: Martin doesn't check block1 if block 2 is true
+
+    def isRuleBlocked(rule: Rule): String =
+      if (rule.body.intersect(culprits).nonEmpty) "--"
+      else if (contrariesOf(rule.body + rule.head).intersect(rule.body  + rule.head).nonEmpty || (rule.body + rule.head).intersect(constraints ++ contrariesOf(defences)).nonEmpty) "~"
+      else ""
+
+    //val decFunctions = isRuleUsedByP _ :: isRuleUsedByOpponent _ :: isRuleBlocked1 _ :: isRuleBlocked2 _ :: Nil
+    val decFunctions = isRuleUsedByP _ :: isRuleUsedByOpponent _ :: isRuleBlocked _ :: Nil
 
     rules.toSeq.sortBy(_.head.id).map( rule =>
       (rule, decFunctions.foldLeft("")((currDec, func) => currDec + func(rule)) + rule)
@@ -207,12 +215,19 @@ class Framework (val rules: Set[Rule],
     def isUnexpandedStatementP(arg: Argument): String = if (unexpandedPStatements.contains(arg)) "\"" else ""
     def isAssumptionOrFullyExpandedStatement(arg: Argument): String = {
       arg match {
-        case litArg: LiteralArgument => if ((assumptions ++ fullyExpandedStatements).contains(litArg.lit)) "^" else ""
+        case litArg: LiteralArgument if ((assumptions ++ fullyExpandedStatements).contains(litArg.lit)) => "^"
         case _ => ""
       }
     }
 
-    val decFunctions = isProponentPiece _ :: isCompletePiece _ :: isUnexpandedStatementP _ :: isAssumptionOrFullyExpandedStatement _ :: Nil
+    def isOpponentAssOrDefContr(arg: Argument): String = arg match {
+      case litArg: LiteralArgument if (contrariesOf(defences).contains(litArg.lit)
+        || (dState.bLitArgs.diff(dState.pLitArgs).contains(litArg) && assumptions.contains(litArg.lit))) => "!"
+      case _ => ""
+    }
+
+    val decFunctions = isProponentPiece _ :: isCompletePiece _ :: isUnexpandedStatementP _ :: isAssumptionOrFullyExpandedStatement _ ::
+      isOpponentAssOrDefContr _ :: Nil
 
     dState.b.toSeq.sortBy {
       case litArg: LiteralArgument => litArg.lit.id
@@ -224,10 +239,36 @@ class Framework (val rules: Set[Rule],
 
   def disputeStateToString(implicit dState: DisputeState): String = {
     // TODO: is it OK to assume that always a complete argument is a LiteralArgument?
-    val goalsAndCulprContrWOCompleteArgs = completePiecesB.collect {
+    val completePiecesLits = completePiecesB.collect {
       case litArg: LiteralArgument => litArg.lit
       case ruleArg: RuleArgument => ruleArg.rule.head   // TODO?
-    } ++ contrariesOf(culprits)
-    s"({${decorateArguments.map(_._2).mkString(" ; ")}}, {${goalsAndCulprContrWOCompleteArgs.mkString(" ; ")}}, {${defences.mkString(" ; ")}}, {${culprits.mkString(" ; ")}})"
+    }
+
+    def sortSetOfLiterals(literals: Set[Literal]): Seq[Literal] = literals.toSeq.sortBy(_.id)
+
+    val goalsAndCulprContrWOCompleteArgs = goals ++ contrariesOf(culprits) -- completePiecesLits
+
+    s"({${decorateArguments.map(_._2).mkString(" ; ")}}, " +
+      s"{${sortSetOfLiterals(goalsAndCulprContrWOCompleteArgs).mkString(" ; ")}}, " +
+      s"{${sortSetOfLiterals(defences).mkString(" ; ")}}, " +
+      s"{${sortSetOfLiterals(culprits).mkString(" ; ")}})"
   }
+
+  def checkIfOver(implicit dState: DisputeState, possibleMoves: Map[MoveType, Seq[PotentialMove]]): Option[String] = {
+    // TODO: consider making a function for that? or implicit conversion?
+    val completeLiteralsB = completePiecesB.collect { case litArg: LiteralArgument => litArg }.map(_.lit)
+    val playedBlockedLiterals = playedBlockedPieces.collect { case litArg: LiteralArgument => litArg }.map(_.lit)
+    val completeLiteralsP = completePiecesP.collect { case litArg: LiteralArgument => litArg }.map(_.lit)
+    if (contrariesOf(culprits).intersect(completeLiteralsB).subsetOf(playedBlockedLiterals)
+      && (goals ++ contrariesOf(culprits)).subsetOf(completeLiteralsP)
+      && possibleMoves.keys.forall(_.isProponentMove))
+        Some("Dispute over. Proponent wins")
+    else if ((contrariesOf(defences).intersect(completeLiteralsB).diff(playedBlockedLiterals).nonEmpty
+      || (goals ++ contrariesOf(culprits)).diff(completeLiteralsP).nonEmpty)
+        && possibleMoves.keys.forall(_.isOpponentsMove))
+          Some("Dispute over. Opponent wins")
+    else
+      None
+  }
+
 }
