@@ -35,7 +35,7 @@ object Main {
     implicit val possibleMoves: Map[MoveType, Seq[PotentialMove]] = Move.getPossibleMoves
 
     framework.checkIfOver match {
-      case Some(propWon) => if (propWon) println(s"Game over. ${ if (propWon) "proponent" else "opponent" } won.")
+      case Some(propWon) => println(s"Game over. ${ if (propWon) "Proponent" else "Opponent" } won.")
       case _ =>
     }
 
