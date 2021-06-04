@@ -25,6 +25,17 @@ class Framework (val rules: Set[Rule],
 
   def contrariesOf(literals: Set[Literal]): Set[Literal] = contraries.filter(ctr => literals.contains(ctr.assumption)).collect(_.contrary)
 
+
+  /// implicits
+  implicit class ArgumentsSetWrapper(val set: Set[Argument]) {
+    def litArgs: Set[LiteralArgument] = set.collect { case litArg: LiteralArgument => litArg }
+    def ruleArgs: Set[RuleArgument] = set.collect { case ruleArg: RuleArgument => ruleArg }
+  }
+
+
+  // end of implicits
+
+
   def bRuleArgs(implicit dState: DisputeState): Set[RuleArgument] = dState.bRuleArgs
 
   def bLitArgs(implicit dState: DisputeState): Set[LiteralArgument] = dState.bLitArgs
@@ -72,6 +83,7 @@ class Framework (val rules: Set[Rule],
   }
 
   // TODO: DRY
+  // TODO: cant I just do completePiecesB intersect p ?
   def completePiecesP(implicit dState: DisputeState): Set[Argument] = {
 
     @tailrec
@@ -156,8 +168,33 @@ class Framework (val rules: Set[Rule],
     playedBlockedPiecesRec(culpritArgs)
   }
 
-  def culpritsCandidates(implicit dState: DisputeState): Set[Literal] = (assumptions intersect bLitArgs.map(_.lit)) -- (defences ++ culprits)
+  // previously we had:
+  //def culpritsCandidates(implicit dState: DisputeState): Set[Literal] = (assumptions intersect bLitArgs.map(_.lit)) -- (defences ++ culprits)
+  def culpritsCandidates(implicit dState: DisputeState): Set[Literal] = (assumptions intersect criticalPieces.litArgs.map(_.lit)) -- defences
 
+  def criticalPieces(implicit dState: DisputeState): Set[Argument] = {
+
+    @tailrec
+    def criticalPiecesRec(args: Set[Argument])(
+      implicit dState: DisputeState, nonBlockedPiecesLit: Set[LiteralArgument], nonBlockedPiecesRules: Set[RuleArgument]): Set[Argument] = {
+
+      val criticalLitArgs = args.litArgs
+      val criticalRuleArgs = args.ruleArgs
+
+      val newLitArgs = nonBlockedPiecesLit.filter(litArg => criticalRuleArgs.exists(_.rule.body.contains(litArg.lit))) -- criticalLitArgs
+      val newRuleArgs = nonBlockedPiecesRules.filter(ruleArg => criticalLitArgs.exists(_.lit == ruleArg.rule.head)) -- criticalRuleArgs
+
+      if (newLitArgs.isEmpty && newRuleArgs.isEmpty) args
+      else criticalPiecesRec(args ++ newLitArgs ++ newRuleArgs)
+    }
+
+    implicit val nonBlockedPiecesLit: Set[LiteralArgument] = bLitArgs -- playedBlockedPieces.litArgs
+    implicit val nonBlockedPiecesRules: Set[RuleArgument] = bRuleArgs -- playedBlockedPieces.ruleArgs
+
+    val nonBlockedDefencesContraries = nonBlockedPiecesLit.filter( litArg => contrariesOf(defences).contains(litArg.lit) ).toSet[Argument]
+
+    criticalPiecesRec(nonBlockedDefencesContraries)
+  }
 
   def decorateAssumptions(implicit dState: DisputeState): Seq[(Literal, String)] = {
     // TODO: improve performance
