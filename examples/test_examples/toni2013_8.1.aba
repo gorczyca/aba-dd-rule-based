@@ -1,0 +1,25 @@
+% Assumptions
+a.
+b.
+c.
+d.
+
+% Contraries
+a:q.
+b:r.
+c:s.
+d:s.
+
+% Rules
+p :- a.
+q:-b.
+q:-z.
+z:-a,b.
+r:-c.
+r:-d.
+
+% Constraints
+
+% Goals:
+% should be accepted
+?p.

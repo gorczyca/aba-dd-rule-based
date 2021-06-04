@@ -1,0 +1,31 @@
+% Assumptions
+a.
+b.
+c.
+d.
+e.
+f.
+
+% Contraries
+a:q.
+b:f.
+c:u.
+d:v.
+e:v.
+f:v.
+
+% Rules
+p :- a,u.
+q:-b,r.
+q:-c,s.
+q:-c,t.
+u:-a.
+s:-.
+t:-d.
+t:-e.
+
+% Constraints
+
+% Goals:
+% should be accepted
+?p.
