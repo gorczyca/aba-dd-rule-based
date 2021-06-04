@@ -24,18 +24,13 @@ object Main {
 
     implicit val lastState: DisputeState = derivation.last   // get last derivation state
 
-    println(s"${lastState.id}. ${lastState.move match {
-      case Some(value) => s"$value: ${lastState.argument match {
-        case Some(arg) => s"$arg"
-        case _ => ""
-      }}"
-      case _ => "(init)"
-    }}")
+    println(lastState.sequenceElement)
 
     //  println(s"Arguments:\n\t${framework.decorateArguments.map(_._2).mkString(" ; ")}\n")
     println(s"Dispute state:\n\t${framework.disputeStateToString}\n")
     println(s"Assumptions: \n\t${framework.decorateAssumptions.map(_._2).mkString(" ; ")}\n")
     println(s"Rules:\n\t${framework.decorateRules.map(_._2).mkString(" ; ")}\n")
+    println(s"Moves sequence:\n\t${derivation.map(_.sequenceElement).mkString("; ")}\n")
 
     implicit val possibleMoves: Map[MoveType, Seq[PotentialMove]] = Move.getPossibleMoves
 
