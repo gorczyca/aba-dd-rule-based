@@ -239,7 +239,7 @@ class Framework (val rules: Set[Rule],
 
   def disputeStateToString(implicit dState: DisputeState): String = {
     // TODO: is it OK to assume that always a complete argument is a LiteralArgument?
-    val completePiecesLits = completePiecesB.collect {
+    val completePiecesLits = completePiecesP.collect {
       case litArg: LiteralArgument => litArg.lit
       case ruleArg: RuleArgument => ruleArg.rule.head   // TODO?
     }

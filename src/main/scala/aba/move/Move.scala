@@ -47,6 +47,9 @@ object Move extends Enumeration {
   implicit class PlayersMove(moveType: MoveType) {
     def isOpponentsMove: Boolean = !isProponentMove
     def isProponentMove: Boolean = moveType.toString.startsWith("P")
+
+    def isForwardMove: Boolean = !isBackwardMove
+    def isBackwardMove: Boolean = moveType.toString()(1) == 'B'
   }
 
   def possibleMovesToString(possibleMoves: Map[MoveType, Seq[PotentialMove]]): String = {
