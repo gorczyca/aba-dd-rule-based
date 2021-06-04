@@ -22,9 +22,6 @@ object Main {
   @tailrec
   def disputeDerivation(derivation: List[DisputeState])(implicit framework: Framework): List[DisputeState] = {
 
-    // caution
-    //implicit def stringToMoveType(moveString: String): MoveType = Move.values.find(_.toString.equalsIgnoreCase(moveString))
-
     implicit val lastState: DisputeState = derivation.last   // get last derivation state
 
     println(s"${lastState.id}. ${lastState.move match {

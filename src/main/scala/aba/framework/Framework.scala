@@ -184,18 +184,18 @@ class Framework (val rules: Set[Rule],
     def isRuleUsedByOpponent(rule: Rule): String = if ((dState.bRuleArgs -- dState.pRuleArgs).map(_.rule).contains(rule)) "@" else ""
     // blocked because of inconsistencies, constraints / contraries of defences in body TODO: should head be tested as well?
 
-    //def isRuleBlocked1(rule: Rule): String = if (contrariesOf(rule.body + rule.head).intersect(rule.body  + rule.head).nonEmpty ||
-    //    (rule.body + rule.head).intersect(constraints ++ contrariesOf(defences)).nonEmpty) "~" else ""
-    //def isRuleBlocked2(rule: Rule): String = if (rule.body.intersect(culprits).nonEmpty) "--" else ""
+    def isRuleBlocked1(rule: Rule): String = if (contrariesOf(rule.body + rule.head).intersect(rule.body  + rule.head).nonEmpty ||
+        (rule.body + rule.head).intersect(constraints ++ contrariesOf(defences)).nonEmpty) "~" else ""
+    def isRuleBlocked2(rule: Rule): String = if (rule.body.intersect(culprits).nonEmpty) "--" else ""
+
     // TODO: Martin doesn't check block1 if block 2 is true
+//    def isRuleBlocked(rule: Rule): String =
+//      if (rule.body.intersect(culprits).nonEmpty) "--"
+//      else if (contrariesOf(rule.body + rule.head).intersect(rule.body  + rule.head).nonEmpty || (rule.body + rule.head).intersect(constraints ++ contrariesOf(defences)).nonEmpty) "~"
+//      else ""
 
-    def isRuleBlocked(rule: Rule): String =
-      if (rule.body.intersect(culprits).nonEmpty) "--"
-      else if (contrariesOf(rule.body + rule.head).intersect(rule.body  + rule.head).nonEmpty || (rule.body + rule.head).intersect(constraints ++ contrariesOf(defences)).nonEmpty) "~"
-      else ""
-
-    //val decFunctions = isRuleUsedByP _ :: isRuleUsedByOpponent _ :: isRuleBlocked1 _ :: isRuleBlocked2 _ :: Nil
-    val decFunctions = isRuleUsedByP _ :: isRuleUsedByOpponent _ :: isRuleBlocked _ :: Nil
+    val decFunctions = isRuleUsedByP _ :: isRuleUsedByOpponent _ :: isRuleBlocked1 _ :: isRuleBlocked2 _ :: Nil
+    //val decFunctions = isRuleUsedByP _ :: isRuleUsedByOpponent _ :: isRuleBlocked _ :: Nil
 
     rules.toSeq.sortBy(_.head.id).map( rule =>
       (rule, decFunctions.foldLeft("")((currDec, func) => currDec + func(rule)) + rule)
