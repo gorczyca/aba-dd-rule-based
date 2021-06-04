@@ -254,7 +254,7 @@ class Framework (val rules: Set[Rule],
       s"{${sortSetOfLiterals(culprits).mkString(" ; ")}})"
   }
 
-  def checkIfOver(implicit dState: DisputeState, possibleMoves: Map[MoveType, Seq[PotentialMove]]): Option[String] = {
+  def checkIfOver(implicit dState: DisputeState, possibleMoves: Map[MoveType, Seq[PotentialMove]]): Option[Boolean] = {
     // TODO: consider making a function for that? or implicit conversion?
     val completeLiteralsB = completePiecesB.collect { case litArg: LiteralArgument => litArg }.map(_.lit)
     val playedBlockedLiterals = playedBlockedPieces.collect { case litArg: LiteralArgument => litArg }.map(_.lit)
@@ -262,11 +262,13 @@ class Framework (val rules: Set[Rule],
     if (contrariesOf(culprits).intersect(completeLiteralsB).subsetOf(playedBlockedLiterals)
       && (goals ++ contrariesOf(culprits)).subsetOf(completeLiteralsP)
       && possibleMoves.keys.forall(_.isProponentMove))
-        Some("Dispute over. Proponent wins")
+        //Some("Dispute over. Proponent wins")
+        Some(true)
     else if ((contrariesOf(defences).intersect(completeLiteralsB).diff(playedBlockedLiterals).nonEmpty
       || (goals ++ contrariesOf(culprits)).diff(completeLiteralsP).nonEmpty)
-        && possibleMoves.keys.forall(_.isOpponentsMove))
-          Some("Dispute over. Opponent wins")
+        && (possibleMoves.keys.filter(_.isProponentMove).groupBy(_.isBackwardMove).size != 2)) // contains at least one forward and one backward prop move
+        // Some("Dispute over. Opponent wins")
+        Some(false)
     else
       None
   }

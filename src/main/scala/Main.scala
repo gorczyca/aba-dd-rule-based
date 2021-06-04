@@ -43,12 +43,12 @@ object Main {
     implicit val possibleMoves: Map[MoveType, Seq[PotentialMove]] = Move.getPossibleMoves
 
     framework.checkIfOver match {
-      case Some(info) => println(info)
+      case Some(propWon) => if (propWon) println(s"Game over. ${ if (propWon) "proponent" else "opponent" } won.")
       case _ =>
     }
 
     val (newDerivation, stop) = progressDerivation(derivation)
-    if (stop) return newDerivation  // TODO: why I need return here -- something with inline ifs and returns
+    if (stop) return newDerivation
 
     disputeDerivation(newDerivation)
   }
