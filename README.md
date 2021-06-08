@@ -54,8 +54,10 @@ Press one of the following button followed by `Enter`:
  - `f` - perform random move forward
  - `f <N>` - perform `N` random moves forward (if possible)
  - `b` - backtrack once
+ - `bb` - backtrack to the very beginning (initial state)
  - `b <N>` - backtrack `N` times (if possible)
  - `q` - quit
+ - `a` - switch to argument-based dispute state representation
  - `<move type>` - perform random move of type `move type`
  - `<move type> <index>` - perform a move of type `move type` and of index `index` (according to the moves listed when inputting `?`)
  
