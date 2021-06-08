@@ -15,7 +15,7 @@ case class LiteralArgument(lit: Literal) extends Argument {
   // for preventing from having two same arguments (but different objects) in a set
   override def equals(obj: Any): Boolean = {
     obj match {
-      case litArg: LiteralArgument => litArg.lit.equals(lit)
+      case LiteralArgument(literal) => literal.equals(lit)
       case _ => false
     }
   }
@@ -33,7 +33,6 @@ case class LiteralArgument(lit: Literal) extends Argument {
   override def children(implicit dState: DisputeState): Set[Argument] =
     dState.b.collect { case ruleArg: RuleArgument => ruleArg }.filter(_.rule.body.contains(this.lit)).toSet[Argument]
 }
-
 
 case class RuleArgument(rule: Rule) extends Argument {
 
