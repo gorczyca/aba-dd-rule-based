@@ -274,7 +274,7 @@ class Framework (val rules: Set[Rule],
     )
   }
 
-  def disputeStateToString(implicit dState: DisputeState): String = {
+  def disputeStateToString(argumentsOptString: Option[String] = None)(implicit dState: DisputeState): String = {
     // TODO: is it OK to assume that always a complete argument is a LiteralArgument?
     val completePiecesLits = completePiecesP.collect {
       case litArg: LiteralArgument => litArg.lit
@@ -285,7 +285,12 @@ class Framework (val rules: Set[Rule],
 
     val goalsAndCulprContrWOCompleteArgs = goals ++ contrariesOf(culprits) -- completePiecesLits
 
-    s"({${decorateArguments.map(_._2).mkString(" ; ")}}, " +
+    val argsString = argumentsOptString match {
+      case Some(string) => string
+      case _ => decorateArguments.map(_._2).mkString(" ; ")
+    }
+
+    s"({$argsString}, " +
       s"{${sortSetOfLiterals(goalsAndCulprContrWOCompleteArgs).mkString(" ; ")}}, " +
       s"{${sortSetOfLiterals(defences).mkString(" ; ")}}, " +
       s"{${sortSetOfLiterals(culprits).mkString(" ; ")}})"
