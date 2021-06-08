@@ -2,7 +2,7 @@ package aba.reasoner
 
 import aba.framework.{Literal, Rule}
 
-abstract class Argument {
+abstract class Argument extends Product with Serializable { // To avoid mapping toSet[Argument]
   def parents(implicit dState: DisputeState): Set[Argument]
   def pParents(implicit dState: DisputeState): Set[Argument] = parents intersect dState.p
   //def children(implicit dState: DisputeState): Set[Argument] = dState.b.filter(_.parents.contains(this))
@@ -58,4 +58,3 @@ case class RuleArgument(rule: Rule) extends Argument {
   override def children(implicit dState: DisputeState): Set[Argument] =
     dState.b.collect { case litArg: LiteralArgument => litArg }.filter(litArg => this.rule.head == litArg.lit).toSet[Argument]
 }
-
