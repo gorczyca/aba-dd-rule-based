@@ -1,58 +1,95 @@
 package aba.reasoner.argumentBased
 
-import aba.framework.{Framework, Literal, Rule}
+import aba.framework.{Framework, Rule}
 import aba.move.Move.MoveType
-import aba.reasoner.DisputeState
+import aba.reasoner.{Argument, DisputeState, LiteralArgument, RuleArgument}
 
 import scala.annotation.tailrec
 
 
 object DisputeStateAB {
-  def apply(dState: DisputeState): DisputeStateAB = {
+  def apply(derivation: List[DisputeState])(implicit framework: Framework): DisputeStateAB = {
+
+    implicit val lastState: DisputeState = derivation.last
+
+    // helper
+    def completeArgument(arg: ArgumentAB): Boolean = arg.premises subsetOf framework.assumptions
 
     @tailrec
-    def convertRec(arguments: Set[ComplexArgumentAB]): Set[ComplexArgumentAB] = {
-    //def convertRec(arguments: Set[ComplexArgumentAB])(implicit rules: Set[Rule]): Set[ArgumentAB] = {
+    def convertPropRec(ruleArgs: Set[ComplexArgumentAB], allPArgs: Set[ArgumentAB]): Set[ArgumentAB] = {
 
-      // backward extend
-      val newBackwardExtended = arguments.flatMap(arg => {
-        arguments.map(_.backwardExpand(arg))
-      }) -- arguments
+      // extend backwards: PB1
+      def maximalIncompleteForGoalsAndCulprits(arg: ArgumentAB): Boolean =
+          (!completeArgument(arg)  // incomplete prop arg
+           && !(allPArgs - arg).exists(otherArg => (otherArg.consequence == arg.consequence && completeArgument(otherArg)) || otherArg.subArguments.contains(arg)) // maximal
+           && (framework.goals ++ framework.contrariesOf(framework.culprits)).contains(arg.consequence))
 
-      // TODO: it should be possible to only propagate backward and still obtain all arguments?
-      // // forward extend
-      //val newForwardExtended = rules.flatMap(rule => {
-      //  val bodies = arguments.filter(complexArg => rule.body.contains(complexArg.head))
-      //    .subsets(rule.body.size).filter(_.map(_.head) == rule.body)
-      //
-      //  bodies.map( body_ => ComplexArgumentAB(rule.head, body_, rule))
-      //})
+      val newBackwardExtended = ruleArgs.flatMap(ruleArg =>
+        allPArgs.filter(maximalIncompleteForGoalsAndCulprits).map(_.backwardExpand(ruleArg))) -- allPArgs
 
-      if (newBackwardExtended.isEmpty) arguments
-      else convertRec(arguments ++ newBackwardExtended)
+      // extend forwards: PF1
+      val newForwardExtended = ruleArgs.map(_.rule).flatMap(rule =>
+        allPArgs.filter(arg => rule.body.contains(arg.consequence)).filter(completeArgument).subsets(rule.body.size)
+          .filter(_.map(_.consequence) == rule.body).map(bodyArgs => ComplexArgumentAB(rule.head, bodyArgs, rule))).toSet[ArgumentAB] -- allPArgs // TODO:
+
+      if (newBackwardExtended.isEmpty && newForwardExtended.isEmpty) allPArgs
+      else convertPropRec(ruleArgs, allPArgs ++ newBackwardExtended ++ newForwardExtended)
+
     }
 
-    val simpleArgs = dState.bLitArgs.map(litArg => SimpleArgumentAB(litArg.lit))
-    //implicit val usedRules: Set[Rule] = dState.bRuleArgs.map(_.rule)
-    val usedRules: Set[Rule] = dState.bRuleArgs.map(_.rule)
-    val ruleArgs = usedRules.map(rule => {
+    @tailrec
+    def convertOppRec(ruleArgs: Set[ComplexArgumentAB], allArgs: Set[ArgumentAB]): Set[ArgumentAB] = {
 
-      val head = simpleArgs.filter(_.literal == rule.head).head.literal // TODO: take exactly 1 element
-      val body = simpleArgs.filter(arg => rule.body.contains(arg.literal)).toSet[ArgumentAB]
+      def opposingArgument(arg: ArgumentAB): Boolean = framework.contrariesOf(framework.defences).contains(arg.consequence)
+      def blockedArgument(arg: ArgumentAB): Boolean = framework.culprits.intersect(arg.assumptions).nonEmpty
 
-      ComplexArgumentAB(head, body, rule)
+      val blockedArguments = allArgs.filter(blockedArgument)
+
+      val newBackwardExtended = ruleArgs.flatMap(ruleArg =>
+        (allArgs.filter(opposingArgument) -- blockedArguments).map(_.backwardExpand(ruleArg))) -- allArgs
+
+      val newForwardExtended = ruleArgs.map(_.rule).flatMap(rule =>
+        (allArgs.filter(completeArgument) -- blockedArguments).filter(arg => rule.body.contains(arg.consequence)).subsets(rule.body.size)
+          .filter(_.map(_.consequence) == rule.body).map(bodyArgs => ComplexArgumentAB(rule.head, bodyArgs, rule))).toSet[ArgumentAB] -- allArgs
+
+      if (newBackwardExtended.isEmpty && newForwardExtended.isEmpty) allArgs
+      else convertOppRec(ruleArgs, allArgs ++ newBackwardExtended ++ newForwardExtended)
+
+    }
+
+    // Case 1.
+    // take only used assumptions and rules
+    val (bArgs, pArgs) = derivation.drop(1).foldLeft( (Set.empty[Argument], Set.empty[Argument]) )( (argsTuple2, derState) =>
+      (derState.move, derState.argument) match {
+        case (Some(move), Some(argument)) =>
+          if (move.isProponentMove) (argsTuple2._1 + argument, argsTuple2._2 + argument)
+          else (argsTuple2._1 + argument, argsTuple2._2)
+      }
+    )
+
+    // Case 2
+    // take all arguments from b / p
+//    val bArgs = lastState.b
+//    val pArgs = lastState.p
+
+
+    val bSimpleArgs = bArgs.collect { case litArg: LiteralArgument => litArg }.map(litArg => SimpleArgumentAB(litArg.lit))
+    val bRuleArgs = bArgs.collect { case ruleArg: RuleArgument => ruleArg }.map(_.rule).map(rule => {
+      //val body = bSimpleArgs.filter(arg => rule.body.contains(arg.literal)).toSet[ArgumentAB]
+      ComplexArgumentAB(rule.head, rule.body.map(SimpleArgumentAB), rule)
     })
 
-    val complexArgs = convertRec(ruleArgs)
+    val pSimpleArgs = bSimpleArgs.filter(simpleArg => pArgs.collect { case litArg: LiteralArgument => litArg }.map(_.lit).contains(simpleArg.literal))
+    val pRuleArgs = bRuleArgs.filter(ruleArg=> pArgs.collect { case ruleArg: RuleArgument => ruleArg }.map(_.rule).contains(ruleArg.rule))
 
-    val pSimpleArgs = simpleArgs.filter(arg => dState.pLitArgs.map(_.lit).contains(arg.literal))
-    val pComplexArgs = complexArgs.filter(arg => arg.rules subsetOf dState.pRuleArgs.map(_.rule))
+    val pArguments = convertPropRec(pRuleArgs, pRuleArgs ++ pSimpleArgs)
+    val bArguments = convertOppRec(bRuleArgs, bRuleArgs ++ bSimpleArgs)
 
     DisputeStateAB(
-      dState.id,
-      dState.move,
-      simpleArgs ++ complexArgs,
-      pSimpleArgs ++ pComplexArgs)
+      lastState.id,
+      lastState.move,
+      bArguments,
+      pArguments)
   }
 }
 
