@@ -69,7 +69,7 @@ object Main {
         println(s"Graph representation exported to: $fileName")
         (derivation, false, false)
       case "a" =>
-        val dStateAB = DisputeStateAB(lastState)
+        val dStateAB = DisputeStateAB(derivation)
         println(s"Dispute state (Argument-Based):\n\t${framework.disputeStateToString(Some(dStateAB.decorateArguments.map(_._2).mkString("; ")))}\n")
         println(s"Rules:\n\t${dStateAB.decorateRules.map(_._2).mkString("; ")}\n")
         (derivation, false, false)

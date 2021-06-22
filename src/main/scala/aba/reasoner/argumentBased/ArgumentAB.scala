@@ -17,6 +17,8 @@ abstract class ArgumentAB extends Product with Serializable {
   def statements: Set[Literal]
 
   def assumptions(implicit framework: Framework): Set[Literal]
+
+  def backwardExpand(complexArg: ComplexArgumentAB): ArgumentAB
 }
 
 case class SimpleArgumentAB(literal: Literal) extends ArgumentAB {
@@ -44,11 +46,13 @@ case class SimpleArgumentAB(literal: Literal) extends ArgumentAB {
   override def statements: Set[Literal] = Set(literal)
 
   def assumptions(implicit framework: Framework): Set[Literal] = framework.assumptions intersect Set(literal)
+
+  override def backwardExpand(complexArg: ComplexArgumentAB): ArgumentAB = if (literal == complexArg.head) complexArg else this
 }
 
 case class ComplexArgumentAB(head: Literal, body: Set[ArgumentAB], rule: Rule) extends ArgumentAB {
 
-  def backwardExpand(complexArg: ComplexArgumentAB): ComplexArgumentAB = {
+  override def backwardExpand(complexArg: ComplexArgumentAB): ArgumentAB = {
     val newBody = body.map {
       case bodySimpleArg: SimpleArgumentAB => if (bodySimpleArg.literal == complexArg.head) complexArg else bodySimpleArg
       case bodyComplexArg: ComplexArgumentAB => bodyComplexArg.backwardExpand(complexArg)
@@ -80,7 +84,11 @@ case class ComplexArgumentAB(head: Literal, body: Set[ArgumentAB], rule: Rule) e
   override def premises: Set[Literal] = body.flatMap(_.premises)
   //
 
-  override def topSubArguments: Set[ArgumentAB] = Set(ComplexArgumentAB(head, body.flatMap(_.topSubArguments), rule), SimpleArgumentAB(head))
+  override def topSubArguments: Set[ArgumentAB] =
+    // product of set of sets, creating all possible bodies
+    body.map(_.topSubArguments).foldLeft(Set(Set.empty[ArgumentAB])) { (x,y) => for (a <- x; b<-y) yield a + b }
+      // map to ComplexArguments and add the head argument
+      .map(bodyArgs => ComplexArgumentAB(head, bodyArgs, rule)) ++ Set(SimpleArgumentAB(head))
 
   override def subArguments: Set[ArgumentAB] = body.flatMap(_.subArguments) ++ topSubArguments
 
