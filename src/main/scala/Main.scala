@@ -4,6 +4,7 @@ import aba.move.Move.MoveType
 import aba.reasoner.argumentBased.DisputeStateAB
 import aba.reasoner.{DisputeState, PotentialMove}
 import commandLineParser.CommandLineParser
+import dot.DotConverter
 
 import scala.annotation.tailrec
 
@@ -60,6 +61,13 @@ object Main {
 
     Console.in.readLine match {
       case "?" => println(s"Possible moves:\n${Move.possibleMovesToString(possibleMoves)}\n"); (derivation, false, false)
+      case s"dot" =>
+        val fileName = DotConverter.exportDotRepr()
+        println(s"Graph representation exported to: $fileName")
+        (derivation, false, false)
+      case s"dot $fileName" =>
+        println(s"Graph representation exported to: $fileName")
+        (derivation, false, false)
       case "a" =>
         val dStateAB = DisputeStateAB(lastState)
         println(s"Dispute state (Argument-Based):\n\t${framework.disputeStateToString(Some(dStateAB.decorateArguments.map(_._2).mkString("; ")))}\n")
@@ -94,7 +102,15 @@ object Main {
                       n: Int = 1)
                      (implicit framework: Framework): List[DisputeState] = {
     implicit val lastState: DisputeState = derivation.last
-    lazy val possibleMoves = Move.getPossibleMoves  // lazy val to evaluate it only when n > 0
+    implicit lazy val possibleMoves: Map[MoveType, Seq[PotentialMove]] = Move.getPossibleMoves  // lazy val to evaluate it only when n > 0
+
+    framework.checkIfOver match {
+      case Some(_) => return derivation
+      case _ =>
+    }
+
+    println(s"$n moves left.")
+
     if (n == 0 || possibleMoves.isEmpty) derivation  // TODO: add checks for won game
     else {
       val newDState = possibleMoves.randomElement.perform

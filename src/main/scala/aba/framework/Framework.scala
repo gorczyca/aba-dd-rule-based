@@ -11,6 +11,9 @@ object Framework {
   def apply(inputType: String, filePath: String): Framework = FileParser(inputType, filePath)
 }
 
+
+// TODO: keep here the file path
+
 class Framework (val rules: Set[Rule],
                  val assumptions: Set[Literal],
                  val contraries: Set[Contrary],

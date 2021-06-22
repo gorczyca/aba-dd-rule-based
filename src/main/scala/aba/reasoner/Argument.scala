@@ -8,6 +8,8 @@ abstract class Argument extends Product with Serializable { // To avoid mapping 
   //def children(implicit dState: DisputeState): Set[Argument] = dState.b.filter(_.parents.contains(this))
   def children(implicit dState: DisputeState): Set[Argument]
   def pChildren(implicit dState: DisputeState): Set[Argument] = children intersect dState.p
+
+  def uid: String = if (hashCode() < 0) "an" + Math.abs(hashCode()).toString else "a" + hashCode().toString
 }
 
 case class LiteralArgument(lit: Literal) extends Argument {
