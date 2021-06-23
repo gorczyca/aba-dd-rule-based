@@ -2,7 +2,7 @@ import aba.framework.Framework
 import aba.move.Move
 import aba.move.Move.MoveType
 import aba.reasoner.argumentBased.DisputeStateAB
-import aba.reasoner.{DisputeState, PotentialMove}
+import aba.reasoner.{DisputeState, LiteralArgument, PotentialMove}
 import commandLineParser.CommandLineParser
 import dot.DotConverter
 
@@ -35,6 +35,42 @@ object Main {
       println(s"Assumptions: \n\t${framework.decorateAssumptions.map(_._2).mkString(" ; ")}\n")
       println(s"Rules:\n\t${framework.decorateRules.map(_._2).mkString(" ; ")}\n")
       println(s"Moves sequence:\n\t${derivation.map(_.sequenceElement).mkString("; ")}\n")
+
+      // Debug-only:
+      println("===============")
+      println("DEBUG:")
+
+      val defContraries = framework.contrariesOf(framework.defences)
+      val completeArguments = framework.completePiecesB
+      val completeArgumentsLit = framework.completePiecesB.collect { case litArg: LiteralArgument => litArg }
+      val completePArgumentsLit = framework.completePiecesP.collect { case litArg: LiteralArgument => litArg }
+
+      val unblockedCompletePlayedLits = framework.unblockedCompletePlayedPiecesB.collect { case litArg: LiteralArgument => litArg }.map(_.lit)
+
+      val playedBlockedPiecesLit = framework.playedBlockedPieces.collect { case litArg: LiteralArgument => litArg }
+      val goals = framework.goals
+      val culpritsContraries = framework.contrariesOf(framework.culprits)
+      val intersection1 = unblockedCompletePlayedLits.intersect(defContraries)
+      val union1 = goals union culpritsContraries
+
+
+      println(s"Defences contraries:\n\t${defContraries.mkString("; ")}")
+      println(s"Unblocked complete played:\n\t${unblockedCompletePlayedLits.mkString("; ")}")
+      println(s"Intersection:\n\t${intersection1.mkString("; ")}")
+      //println(s"Played blocked pieces:\n\t${framework.playedBlockedPieces.mkString("; ")}")
+
+      println(s"Goals:\n\t${framework.goals.mkString("; ")}")
+      println(s"Culprits contraries:\n\t${culpritsContraries.mkString("; ")}")
+      println(s"Union:\n\t${union1.mkString("; ")}")
+
+      println(s"Complete P args: :\n\t${completePArgumentsLit.mkString("; ")}")
+
+      println(s"Left cond 1:\n\t${intersection1.mkString("; ")}")
+      println(s"Left cond 2:\n\t${union1.diff(completePArgumentsLit.map(_.lit)).mkString("; ")}")
+
+
+
+
     }
 
 
