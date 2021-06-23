@@ -173,6 +173,35 @@ class Framework (val rules: Set[Rule],
     playedBlockedPiecesRec(culpritArgs)
   }
 
+  def unblockedCompletePlayedPiecesB(implicit dState: DisputeState): Set[Argument] = {
+
+
+    @tailrec
+    def opponentsUnblockedCompletePlayedPiecesRec(args: Set[Argument])(implicit dState: DisputeState,
+                                                    playedNonBlockedRules: Set[RuleArgument],
+                                                    playedNonBlockedNonAssumptionsLitArguments: Set[LiteralArgument]): Set[Argument] = {
+
+      val playedUnblockedCompleteRuleArgs = args.collect { case ruleArg: RuleArgument => ruleArg }
+      val playedUnblockedCompleteLitArgs = args.collect { case litArg: LiteralArgument => litArg }
+
+      //val newLitArgs = pla
+      val newLitArgs = playedNonBlockedNonAssumptionsLitArguments.filter(_.parents.intersect(args).nonEmpty) -- playedUnblockedCompleteLitArgs
+      val newRuleArgs = playedNonBlockedRules.filter(_.rule.body.subsetOf(playedUnblockedCompleteLitArgs.map(_.lit))) -- playedUnblockedCompleteRuleArgs
+
+      if (newLitArgs.isEmpty && newRuleArgs.isEmpty) args
+      else opponentsUnblockedCompletePlayedPiecesRec(args ++ newRuleArgs ++ newLitArgs)
+
+    }
+
+    implicit val playedNonBlockedRules: Set[RuleArgument] = bRuleArgs -- playedBlockedPieces.collect { case ruleArg: RuleArgument => ruleArg }
+    implicit val playedNonBlockedNonAssumptionsLitArguments: Set[LiteralArgument] = (bLitArgs -- playedBlockedPieces.collect { case litArg: LiteralArgument => litArg }).filterNot(litArg => assumptions.contains(litArg.lit))
+
+    val nonCulpritAssumptions = assumptions -- culprits
+    val playedNonCulpritAssumptions = dState.bLitArgs.filter(litArg => nonCulpritAssumptions.contains(litArg.lit)).toSet[Argument]
+
+    opponentsUnblockedCompletePlayedPiecesRec(playedNonCulpritAssumptions)
+  }
+
   // previously we had:
   //def culpritsCandidates(implicit dState: DisputeState): Set[Literal] = (assumptions intersect bLitArgs.map(_.lit)) -- (defences ++ culprits)
   def culpritsCandidates(implicit dState: DisputeState): Set[Literal] = (assumptions intersect criticalPieces.litArgs.map(_.lit)) -- defences
@@ -303,15 +332,25 @@ class Framework (val rules: Set[Rule],
 
   def checkIfOver(implicit dState: DisputeState, possibleMoves: Map[MoveType, Seq[PotentialMove]]): Option[Boolean] = {
     // TODO: consider making a function for that? or implicit conversion?
-    val completeLiteralsB = completePiecesB.collect { case litArg: LiteralArgument => litArg }.map(_.lit)
-    val playedBlockedLiterals = playedBlockedPieces.collect { case litArg: LiteralArgument => litArg }.map(_.lit)
+    // previously we had
+    //val completeLiteralsB = completePiecesB.collect { case litArg: LiteralArgument => litArg }.map(_.lit)
+    //val playedBlockedLiterals = playedBlockedPieces.collect { case litArg: LiteralArgument => litArg }.map(_.lit)
+
+    val unblockedCompletePlayedLits = unblockedCompletePlayedPiecesB.collect { case litArg: LiteralArgument => litArg }.map(_.lit)
+
     val completeLiteralsP = completePiecesP.collect { case litArg: LiteralArgument => litArg }.map(_.lit)
-    if (contrariesOf(culprits).intersect(completeLiteralsB).subsetOf(playedBlockedLiterals)
+
+    val cond1 = contrariesOf(defences).intersect(unblockedCompletePlayedLits).isEmpty
+    val cond2 = (goals ++ contrariesOf(culprits)).subsetOf(completeLiteralsP)
+    val cond3 = (possibleMoves.keys.filter(_.isOpponentsMove).groupBy(_.isBackwardMove).size != 2)
+
+
+    if (contrariesOf(defences).intersect(unblockedCompletePlayedLits).isEmpty
       && (goals ++ contrariesOf(culprits)).subsetOf(completeLiteralsP)
-      && possibleMoves.keys.forall(_.isProponentMove))
+      && (possibleMoves.keys.filter(_.isOpponentsMove).groupBy(_.isBackwardMove).size != 2)) // contains at least one forward and one backward prop move
         //Some("Dispute over. Proponent wins")
         Some(true)
-    else if ((contrariesOf(defences).intersect(completeLiteralsB).diff(playedBlockedLiterals).nonEmpty
+    else if ((contrariesOf(defences).intersect(unblockedCompletePlayedLits).nonEmpty
       || (goals ++ contrariesOf(culprits)).diff(completeLiteralsP).nonEmpty)
         && (possibleMoves.keys.filter(_.isProponentMove).groupBy(_.isBackwardMove).size != 2)) // contains at least one forward and one backward prop move
         // Some("Dispute over. Opponent wins")
