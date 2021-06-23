@@ -144,7 +144,9 @@ class Framework (val rules: Set[Rule],
   }
 
   def fullyExpandedStatements(implicit dState: DisputeState): Set[Literal] = {
-    bLitArgs.map(_.lit).diff(remainingRulesP.diff(blockedRulesB).map(_.head))
+    // TODO: previously had
+    //bLitArgs.map(_.lit).diff(remainingRulesP.diff(blockedRulesB).map(_.head))
+    bLitArgs.map(_.lit).diff(remainingRulesB.diff(blockedRulesB).map(_.head))
   }
 
   def playedBlockedPieces(implicit dState: DisputeState): Set[Argument] = {
@@ -157,7 +159,7 @@ class Framework (val rules: Set[Rule],
       val playedBlockedLitArgs = args.collect { case litArg: LiteralArgument => litArg }
 
       //val newLitArgs = fullyExpandedStatements.diff() bLitArgs.filter(arg => nonAssumptionsLiterals.contains(arg.lit) && arg.bParents.intersect(args).nonEmpty)
-      val newLitArgs = fullyExpandedStatementsLitArgs.filterNot(arg => (bRuleArgs -- playedBlockedRuleArgs).map(_.rule.head).contains(arg.lit)) -- playedBlockedLitArgs
+      val newLitArgs = fullyExpandedStatementsLitArgs.filterNot(arg => (dState.bRuleArgs -- playedBlockedRuleArgs).map(_.rule.head).contains(arg.lit)) -- playedBlockedLitArgs
       val newRuleArgs = bRuleArgs.filter(arg => arg.rule.body.intersect(playedBlockedLitArgs.map(_.lit)).nonEmpty) -- playedBlockedRuleArgs
 
       if (newRuleArgs.isEmpty && newLitArgs.isEmpty) args // do this as long as new arguments are created
