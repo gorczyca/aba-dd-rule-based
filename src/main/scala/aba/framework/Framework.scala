@@ -153,13 +153,14 @@ class Framework (val rules: Set[Rule],
 
     // TODO: what is the naming convention for wrapped recursive function?
     @tailrec
-    def playedBlockedPiecesRec(args: Set[Argument])(implicit dState: DisputeState, fullyExpandedStatementsLitArgs: Set[LiteralArgument]): Set[Argument] = {
+    def playedBlockedPiecesRec(args: Set[Argument])(implicit dState: DisputeState,
+                                                    fullyExpandedStatementsLitArgs: Set[LiteralArgument]): Set[Argument] = {
 
       val playedBlockedRuleArgs = args.collect { case ruleArg: RuleArgument => ruleArg }
       val playedBlockedLitArgs = args.collect { case litArg: LiteralArgument => litArg }
 
       //val newLitArgs = fullyExpandedStatements.diff() bLitArgs.filter(arg => nonAssumptionsLiterals.contains(arg.lit) && arg.bParents.intersect(args).nonEmpty)
-      val newLitArgs = fullyExpandedStatementsLitArgs.filterNot(arg => (dState.bRuleArgs -- playedBlockedRuleArgs).map(_.rule.head).contains(arg.lit)) -- playedBlockedLitArgs
+      val newLitArgs = fullyExpandedStatementsLitArgs.filter(arg => !(dState.bRuleArgs -- playedBlockedRuleArgs).map(_.rule.head).contains(arg.lit) && !assumptions.contains(arg.lit)) -- playedBlockedLitArgs
       val newRuleArgs = bRuleArgs.filter(arg => arg.rule.body.intersect(playedBlockedLitArgs.map(_.lit)).nonEmpty) -- playedBlockedRuleArgs
 
       if (newRuleArgs.isEmpty && newLitArgs.isEmpty) args // do this as long as new arguments are created
