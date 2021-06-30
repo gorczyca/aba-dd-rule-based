@@ -258,6 +258,12 @@ class Framework (val rules: Set[Rule],
     criticalPiecesRec(nonBlockedDefencesContraries)
   }
 
+  def j(implicit dState: DisputeState): Set[Literal] = {
+    val unblockedCompleteBLit = unblockedCompletePlayedPiecesB.collect { case litArg: LiteralArgument => litArg.lit } // performance
+    assumptions.filter(ass => contrariesOf(ass).intersect(unblockedCompleteBLit).isEmpty)
+  }
+
+
   def decorateAssumptions(implicit dState: DisputeState): Seq[(Literal, String)] = {
     // TODO: improve performance
     def isProponentAssumption(lit: Literal): String = if (dState.pLitArgs.map(_.lit).contains(lit)) "&" else ""
