@@ -158,7 +158,8 @@ class Framework (val rules: Set[Rule],
       val playedBlockedRuleArgs = args.collect { case ruleArg: RuleArgument => ruleArg }
       val playedBlockedLitArgs = args.collect { case litArg: LiteralArgument => litArg }
 
-      //val newLitArgs = fullyExpandedStatements.diff() bLitArgs.filter(arg => nonAssumptionsLiterals.contains(arg.lit) && arg.bParents.intersect(args).nonEmpty)
+      // important:
+      // the part: && !assumptions.contains(arg.lit) is crucial, since  then every played assumption becomes a blocked piece
       val newLitArgs = fullyExpandedStatementsLitArgs.filter(arg => !(dState.bRuleArgs -- playedBlockedRuleArgs).map(_.rule.head).contains(arg.lit) && !assumptions.contains(arg.lit)) -- playedBlockedLitArgs
       val newRuleArgs = bRuleArgs.filter(arg => arg.rule.body.intersect(playedBlockedLitArgs.map(_.lit)).nonEmpty) -- playedBlockedRuleArgs
 
