@@ -1,8 +1,12 @@
+import scala.language.implicitConversions
+
 import aba.framework.Framework
-import aba.move.Move
+import aba.move.DisputeAdvancement.{DAB, DF, DisputeAdvancementType}
+import aba.move.{DisputeAdvancement, Move, TerminationCriteria}
 import aba.move.Move.MoveType
+import aba.move.TerminationCriteria.{TA, TerminationCriteriaType}
 import aba.reasoner.argumentBased.DisputeStateAB
-import aba.reasoner.{DisputeState, LiteralArgument, PotentialMove}
+import aba.reasoner.{DisputeState, PotentialMove}
 import commandLineParser.CommandLineParser
 import dot.DotConverter
 
@@ -16,14 +20,21 @@ object Main {
       case Some(config) =>
         implicit val framework: Framework = Framework(config.inputFormat, config.inputFilePath)
         println("\n\n==============\nDerivation started.\n==============\n")
-        disputeDerivation(framework.initialDState :: Nil, redraw = true)
+
+        implicit val initialDState: DisputeState = framework.initialDState
+
+        val defaultDAdvancement = DAB
+        val defaultTCriteria = TA
+        disputeDerivation(initialDState :: Nil, redraw = true, defaultDAdvancement, defaultTCriteria)
+        disputeDerivation(initialDState :: Nil, redraw = true, defaultDAdvancement, defaultTCriteria)
       case _ =>
     }
 
   }
 
   @tailrec
-  def disputeDerivation(derivation: List[DisputeState], redraw: Boolean)(implicit framework: Framework): List[DisputeState] = {
+  def disputeDerivation(derivation: List[DisputeState], redraw: Boolean, dAdvancementType: DisputeAdvancementType, tCriteriaType: TerminationCriteriaType)
+                       (implicit framework: Framework): List[DisputeState] = {
 
     implicit val lastState: DisputeState = derivation.last   // get last derivation state
 
@@ -40,61 +51,100 @@ object Main {
 
     implicit val possibleMoves: Map[MoveType, Seq[PotentialMove]] = DisputeAdvancement(dAdvancementType).getPossibleMoves
 
-    implicit val possibleMoves: Map[MoveType, Seq[PotentialMove]] = Move.getPossibleMoves
-
-    framework.checkIfOver match {
+    TerminationCriteria.checkIfOver(tCriteriaType) match {
       case Some(propWon) => println(s"Game over. ${ if (propWon) "Proponent" else "Opponent" } won.")
       case _ =>
     }
 
-    val (newDerivation, stop, nextRedraw) = progressDerivation(derivation)
+    val (newDerivation, stop, nextRedraw, nextAdvancementType, nextTerminationType) = progressDerivation(derivation, dAdvancementType, tCriteriaType)
 
-    if (!stop) disputeDerivation(newDerivation, nextRedraw)
+    if (!stop) disputeDerivation(newDerivation, nextRedraw, nextAdvancementType, nextTerminationType)
     else newDerivation
   }
 
-  def progressDerivation(derivation: List[DisputeState])(implicit framework: Framework,
+  def progressDerivation(derivation: List[DisputeState],
+                         dAdvancement: DisputeAdvancementType,
+                         tCriteria: TerminationCriteriaType)(implicit framework: Framework,
                                                          possibleMoves: Map[MoveType, Seq[PotentialMove]],
                                                          lastState: DisputeState):
-  (List[DisputeState], Boolean, Boolean) = {
+  (List[DisputeState], Boolean, Boolean, DisputeAdvancementType, TerminationCriteriaType) = {
 
     val digitRegex = """\d+""".r
-    val moveTypesStrings = Move.values.map(_.toString.toLowerCase)
+
+    val Seq(
+      moveTypesStrings,
+      advancementTypesStrings,
+      terminationCriteriaTypesStrings
+    )
+    = Seq(Move, DisputeAdvancement, TerminationCriteria).map(_.values.map(_.toString.toLowerCase()))
 
     Console.in.readLine match {
-      case "?" => println(s"Possible moves:\n${Move.possibleMovesToString(possibleMoves)}\n"); (derivation, false, false)
+      case "?" =>
+        println(s"Possible moves:\n${Move.possibleMovesToString(possibleMoves)}\n")
+        (derivation, false, false, dAdvancement, tCriteria)
+      case "debug" =>
+        printDebuggingInformation
+        (derivation, false, false, dAdvancement, tCriteria)
+      case "s" | "show" => (derivation, false, true, dAdvancement, tCriteria)
+      case "i" | "info" =>
+        println(s"Advancement type: $dAdvancement")
+        println(s"Termination criteria type: $tCriteria")
+        (derivation, false, false, dAdvancement, tCriteria)
       case s"dot" =>
         val fileName = DotConverter.exportDotRepr()
         println(s"Graph representation exported to: $fileName")
-        (derivation, false, false)
+        (derivation, false, false, dAdvancement, tCriteria)
       case s"dot $fileName" =>
         println(s"Graph representation exported to: $fileName")
-        (derivation, false, false)
+        (derivation, false, false, dAdvancement, tCriteria)
       case "a" =>
         val dStateAB = DisputeStateAB(derivation)
         println(s"Dispute state (Argument-Based):\n\t${framework.disputeStateToString(Some(dStateAB.decorateArguments.map(_._2).mkString("; ")))}\n")
         println(s"Rules:\n\t${dStateAB.decorateRules.map(_._2).mkString("; ")}\n")
-        (derivation, false, false)
-      case "f" => (forward(derivation), false, true)
-      case s"f $x" if digitRegex.matches(x) => (forward(derivation, x.toInt), false, true)  // TODO: regexes ?
-      case s"f $x" => print(s"Number required, $x passed."); (derivation, false, true)  // TODO:
-      case "b" => (derivation.safeBacktrack(), false, true)
-      case "bb" => (derivation.take(1), false, true)
-      case s"b $x" if digitRegex.matches(x) => (derivation.safeBacktrack(x.toInt), false, true)  // TODO: regexes ?
-      case s"b $x" => print(s"Number required, $x passed."); (derivation, false, true)
-      case "q" => (derivation, true, false)
-      case s"$move" if moveTypesStrings.contains(move) => (derivation :+ possibleMoves(move).random.perform, false, true) // implicit conversion
+        (derivation, false, false, dAdvancement, tCriteria)
+      case "f" =>
+        (forward(derivation, dAdvancement, tCriteria), false, true, dAdvancement, tCriteria)
+      case s"f $x" if digitRegex.matches(x) =>
+        (forward(derivation, dAdvancement, tCriteria, x.toInt), false, true, dAdvancement, tCriteria)  // TODO: regexes ?
+      case s"f $x" =>
+        print(s"Number required, $x passed.")
+        (derivation, false, true, dAdvancement, tCriteria)  // TODO:
+      case "b" =>
+        (derivation.safeBacktrack(), false, true, dAdvancement, tCriteria)
+      case "bb" =>
+        (derivation.take(1), false, true, dAdvancement, tCriteria)
+      case s"b $x" if digitRegex.matches(x) =>
+        (derivation.safeBacktrack(x.toInt), false, true, dAdvancement, tCriteria)  // TODO: regexes ?
+      case s"b $x" =>
+        print(s"Number required, $x passed.")
+        (derivation, false, true, dAdvancement, tCriteria)
+      case "q" =>
+        (derivation, true, false, dAdvancement, tCriteria)
+      case s"ct $newCriteria" if terminationCriteriaTypesStrings.contains(newCriteria.toLowerCase) =>
+        println(s"Termination criteria set to: ${newCriteria.toUpperCase()}")
+        (derivation, false, false, dAdvancement, newCriteria) // implicit conversion
+      case s"ct $newCriteria" if !terminationCriteriaTypesStrings.contains(newCriteria.toLowerCase) =>
+        println(s"No termination criteria of type: $newCriteria")
+        (derivation, false, false, dAdvancement, tCriteria)
+      case s"ca $newAdvancement" if advancementTypesStrings.contains(newAdvancement.toLowerCase) =>
+        println(s"Advancement type set to ${newAdvancement.toUpperCase()}")
+        (derivation, false, false, newAdvancement, tCriteria)
+      case s"ct $newAdvancement" if !terminationCriteriaTypesStrings.contains(newAdvancement.toLowerCase) =>
+        println(s"No advancement of type: $newAdvancement")
+        (derivation, false, false, dAdvancement, tCriteria)
+      case s"$move" if moveTypesStrings.contains(move.toLowerCase) =>
+        (derivation :+ possibleMoves(move).random.perform, false, true, dAdvancement, tCriteria) // implicit conversion
       case s"$move $x" if moveTypesStrings.contains(move.toLowerCase) && digitRegex.matches(x) =>
         val movesNo = x.toInt
         val movesOfType = possibleMoves(move) // implicit conversion
         if (movesOfType.size >= movesNo + 1) {
-           (derivation :+ movesOfType(movesNo).perform, false, true)
+           (derivation :+ movesOfType(movesNo).perform, false, true, dAdvancement, tCriteria)
         } else {
           println(s"Wrong index. $move")
-          (derivation, false, false)
+          (derivation, false, false, dAdvancement, tCriteria)
         }
 
-      case _ => println("Error"); (derivation, false, false)
+      case _ => println("Error"); (derivation, false, false, dAdvancement, tCriteria)
     }
   }
 
@@ -126,12 +176,14 @@ object Main {
 
   @tailrec
   private def forward(derivation: List[DisputeState],
+                      dAdvancement: DisputeAdvancementType,
+                      tCriteria: TerminationCriteriaType,
                       n: Int = 1)
                      (implicit framework: Framework): List[DisputeState] = {
     implicit val lastState: DisputeState = derivation.last
     implicit lazy val possibleMoves: Map[MoveType, Seq[PotentialMove]] = DisputeAdvancement(dAdvancement).getPossibleMoves // Move.getPossibleMoves  // lazy val to evaluate it only when n > 0
 
-    framework.checkIfOver match {
+    TerminationCriteria.checkIfOver(tCriteria) match {
       case Some(_) => return derivation
       case _ =>
     }
@@ -141,7 +193,7 @@ object Main {
     if (n == 0 || possibleMoves.isEmpty) derivation  // TODO: add checks for won game
     else {
       val newDState = possibleMoves.randomElement.perform
-      forward(derivation :+ newDState, n-1) // tail recursion
+      forward(derivation :+ newDState, dAdvancement, tCriteria, n-1) // tail recursion
     }
   }
 
