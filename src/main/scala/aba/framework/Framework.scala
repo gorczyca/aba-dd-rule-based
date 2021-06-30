@@ -200,12 +200,40 @@ class Framework (val rules: Set[Rule],
     val nonCulpritAssumptions = assumptions -- culprits
     val playedNonCulpritAssumptions = dState.bLitArgs.filter(litArg => nonCulpritAssumptions.contains(litArg.lit)).toSet[Argument]
 
-    opponentsUnblockedCompletePlayedPiecesRec(playedNonCulpritAssumptions)
+    unblockedCompletePlayedPiecesBRec(playedNonCulpritAssumptions)
+  }
+
+  def unblockedPiecesSupportingStatements(statements: Set[Literal])(implicit dState: DisputeState): Set[Argument] = {
+
+    @tailrec
+    def unblockedPiecesSupportingStatementsRec(args: Set[Argument])(implicit dState: DisputeState,
+                                                                    nonBlockedPlayedLitArgs: Set[LiteralArgument],
+                                                                    nonBlockedPlayedRuleArgs: Set[RuleArgument]): Set[Argument] = {
+
+      val unblockedPiecesLitArgs = args.collect { case litArg: LiteralArgument => litArg }
+      val unblockedPiecesRuleArgs = args.collect { case ruleArg: RuleArgument => ruleArg }
+
+      val newLitArgs = nonBlockedPlayedLitArgs.filter(litArg => unblockedPiecesRuleArgs.exists(_.rule.body.contains(litArg.lit))) -- unblockedPiecesLitArgs
+      val newRuleArgs = nonBlockedPlayedRuleArgs.filter(ruleArg => unblockedPiecesLitArgs.map(_.lit).contains(ruleArg.rule.head)) -- unblockedPiecesRuleArgs
+
+      if (newLitArgs.isEmpty && newRuleArgs.isEmpty) args
+      else unblockedPiecesSupportingStatementsRec(args ++ newRuleArgs ++ newLitArgs)
+    }
+
+    val playedBlockedPiecesLitArgs: Set[LiteralArgument] = playedBlockedPieces.collect { case litArg: LiteralArgument => litArg }
+    val playedBlockedPiecesRuleArgs: Set[RuleArgument] = playedBlockedPieces.collect { case ruleArg: RuleArgument => ruleArg }
+
+    implicit val nonBlockedPlayedLitArgs: Set[LiteralArgument] = bLitArgs -- playedBlockedPiecesLitArgs
+    implicit val nonBlockedPlayedRuleArgs: Set[RuleArgument] = bRuleArgs -- playedBlockedPiecesRuleArgs
+
+    val playedNonBlockedPieces = nonBlockedPlayedLitArgs.filter(litArg => statements.contains(litArg.lit)).toSet[Argument]
+
+    unblockedPiecesSupportingStatementsRec(playedNonBlockedPieces)
   }
 
   // previously we had:
   //def culpritsCandidates(implicit dState: DisputeState): Set[Literal] = (assumptions intersect bLitArgs.map(_.lit)) -- (defences ++ culprits)
-  def culpritsCandidates(implicit dState: DisputeState): Set[Literal] = (assumptions intersect criticalPieces.litArgs.map(_.lit)) -- defences
+  def culpritsCandidates(implicit dState: DisputeState): Set[Literal] = assumptions intersect unblockedPiecesSupportingStatements(contrariesOf(defences)).collect { case litArg: LiteralArgument => litArg.lit }
 
   def criticalPieces(implicit dState: DisputeState): Set[Argument] = {
 
