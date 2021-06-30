@@ -1,8 +1,7 @@
 package aba.move
 
 import scala.language.implicitConversions
-
-import aba.framework.Framework
+import aba.framework.{Framework, Literal}
 import aba.reasoner.{DisputeState, PotentialMove}
 
 import scala.math.Ordering.Implicits.seqOrdering
@@ -34,14 +33,9 @@ object Move extends Enumeration {
     }
   }
 
-  // TODO: change MoveType to Value?
-  def getPossibleMoves(implicit framework: Framework, dState: DisputeState): Map[MoveType, Seq[PotentialMove]] = {
-    Move.values.map(x => (x, Move(x).isPossible)).filter(_._2.nonEmpty).toMap
-  }
-
   implicit def fromString(moveString: String): MoveType = values.find(_.toString.equalsIgnoreCase(moveString)) match {
     case Some(value) => value
-    case None => throw new Exception("TODO:")
+    case None => throw new Exception(s"No move type: $moveString")
   }
 
   implicit class PlayersMove(moveType: MoveType) {
@@ -64,5 +58,5 @@ object Move extends Enumeration {
 // Abstract class for all moves
 abstract class Move {
   //def isPossible(dState: DisputeState)(implicit framework: Framework): Set[PotentialMove]
-  def isPossible(implicit framework: Framework, dState: DisputeState): Seq[PotentialMove]
+  def isPossible(set: Set[Literal])(implicit framework: Framework, dState: DisputeState): Seq[PotentialMove]
 }

@@ -1,41 +1,27 @@
 package aba.move
 
-import aba.framework.Framework
+import aba.framework.{Framework, Literal}
 import aba.reasoner.{DisputeState, LiteralArgument, PotentialMove, RuleArgument}
 
 
 object PB2Move extends Move {
-  override def isPossible(implicit framework: Framework, dState: DisputeState): Seq[PotentialMove] = {
-    // case a)
-    val culpritsCandidatesWithoutP = framework.culpritsCandidates -- dState.pLitArgs.map(_.lit)
-    val caseA = framework.remainingNonBlockedPRules.filter( rule => culpritsCandidatesWithoutP.contains(rule.head)).map(RuleArgument) // definition
+  override def isPossible(set: Set[Literal])(implicit framework: Framework, dState: DisputeState): Seq[PotentialMove] = {
+
+    val setDiff = dState.pLitArgs.map(_.lit) union framework.contrariesOf(framework.defences) union framework.constraints
+    val union = framework.contrariesOf(framework.culpritsCandidates) union set
+    val possibleRuleHeads = union -- setDiff
+
+    framework.remainingNonBlockedPRules.filter(rule => possibleRuleHeads.contains(rule.head))
+      .map(RuleArgument)
       .diff(dState.pRuleArgs) // prevent from repeating
       .toSeq.sortBy(_.rule.head.id) // sorting
-      .map(
-      ruleArg =>
+      .map(ruleArg =>
         PotentialMove(
           Some(ruleArg),
           None,
           ruleArg.rule.body.map(LiteralArgument) + LiteralArgument(ruleArg.rule.head),
           Move.PB2,
-          Some("case (a)"))
-    )
-
-    // case b)
-    val caseB = ((framework.assumptions intersect framework.contrariesOf(framework.culpritsCandidates)) --
-      (dState.pLitArgs.map(_.lit) ++ framework.blockedAssumptionsP)).map(LiteralArgument) // definition
-      .diff(dState.pLitArgs) // prevent from repeating
-      .toSeq.sortBy(_.lit.id) // sorting
-      .map(
-        litArg =>
-          PotentialMove(
-            None,
-            Some(litArg),
-            Set(litArg),
-            Move.PB2,
-            Some("case (b)")
-          )
-    )
-      caseA ++ caseB
+          None)
+      )
   }
 }

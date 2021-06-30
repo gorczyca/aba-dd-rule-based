@@ -73,6 +73,7 @@ object Main {
 
     }
 
+    implicit val possibleMoves: Map[MoveType, Seq[PotentialMove]] = DisputeAdvancement(dAdvancementType).getPossibleMoves
 
     implicit val possibleMoves: Map[MoveType, Seq[PotentialMove]] = Move.getPossibleMoves
 
@@ -138,7 +139,7 @@ object Main {
                       n: Int = 1)
                      (implicit framework: Framework): List[DisputeState] = {
     implicit val lastState: DisputeState = derivation.last
-    implicit lazy val possibleMoves: Map[MoveType, Seq[PotentialMove]] = Move.getPossibleMoves  // lazy val to evaluate it only when n > 0
+    implicit lazy val possibleMoves: Map[MoveType, Seq[PotentialMove]] = DisputeAdvancement(dAdvancement).getPossibleMoves // Move.getPossibleMoves  // lazy val to evaluate it only when n > 0
 
     framework.checkIfOver match {
       case Some(_) => return derivation
