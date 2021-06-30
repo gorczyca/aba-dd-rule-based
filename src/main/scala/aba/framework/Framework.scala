@@ -56,7 +56,7 @@ class Framework (val rules: Set[Rule],
   }
 
   def culprits(implicit dState: DisputeState): Set[Literal] = {
-    contraries.filter(ctr => pLitArgs.map(_.lit).contains(ctr.contrary)).collect(_.assumption)
+    contraries.filter(ctr => pLitArgs.map(_.lit).contains(ctr.contrary)).map(_.assumption)
   }
 
   def remainingRulesP(implicit dState: DisputeState): Set[Rule] = {
