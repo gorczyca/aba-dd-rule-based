@@ -98,7 +98,6 @@ class Framework (val rules: Set[Rule],
       val newRuleArgs = pRuleArgs.filter(arg => arg.rule.body.subsetOf(completeLitArgs.map(_.lit))) -- completeRuleArgs // remove old args, consider new rule args only
       val newLitArgs = pLitArgs.filter(arg => nonAssumptionsLiterals.contains(arg.lit) && arg.pParents.intersect(args).nonEmpty)  -- completeLitArgs // same
 
-
       if (newRuleArgs.isEmpty && newLitArgs.isEmpty) args // do this as long as new arguments are created
       else completePiecesRecP(args ++ newRuleArgs ++ newLitArgs)
     }
@@ -146,7 +145,7 @@ class Framework (val rules: Set[Rule],
   def fullyExpandedStatements(implicit dState: DisputeState): Set[Literal] = {
     // TODO: previously had
     //bLitArgs.map(_.lit).diff(remainingRulesP.diff(blockedRulesB).map(_.head))
-    bLitArgs.map(_.lit).diff(remainingRulesB.diff(blockedRulesB).map(_.head))
+    bLitArgs.map(_.lit).diff(remainingNonBlockedBRules.map(_.head))
   }
 
   def playedBlockedPieces(implicit dState: DisputeState): Set[Argument] = {
