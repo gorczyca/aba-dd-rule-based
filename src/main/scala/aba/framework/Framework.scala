@@ -317,7 +317,11 @@ class Framework (val rules: Set[Rule],
 
     def isProponentPiece(arg: Argument): String = if (dState.p.contains(arg)) "$" else ""
     def isCompletePiece(arg: Argument): String = if (completePiecesP.contains(arg)) "**" else if (completePiecesB.contains(arg)) "*" else ""
-    def isUnexpandedStatementP(arg: Argument): String = if (unexpandedPStatements.contains(arg)) "\"" else ""
+    def isUnexpandedStatementP(arg: Argument): String = arg match {
+      case litArg: LiteralArgument if unexpandedPStatements.contains(litArg.lit) => "\""
+      case _ => ""
+    }
+
     def isAssumptionOrFullyExpandedStatement(arg: Argument): String = {
       arg match {
         case litArg: LiteralArgument if ((assumptions ++ fullyExpandedStatements).contains(litArg.lit)) => "^"
@@ -364,6 +368,7 @@ class Framework (val rules: Set[Rule],
       s"{${sortSetOfLiterals(culprits).mkString(" ; ")}})"
   }
 
+  // TODO: remove
   def checkIfOver(implicit dState: DisputeState, possibleMoves: Map[MoveType, Seq[PotentialMove]]): Option[Boolean] = {
     // TODO: consider making a function for that? or implicit conversion?
     // previously we had
