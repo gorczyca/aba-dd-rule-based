@@ -138,8 +138,8 @@ class Framework (val rules: Set[Rule],
 //    pLitArgs.map(_.lit).diff(pRuleArgs.map(_.rule.head)) // diff = filterNot + contains
 //  }
 
-  def unexpandedPStatements(implicit dState: DisputeState): Set[Argument] = {
-    pLitArgs.filterNot(litArg => pRuleArgs.map(_.rule.head).contains(litArg.lit)).toSet[Argument]
+  def unexpandedPStatements(implicit dState: DisputeState): Set[Literal] = {
+    pLitArgs.filterNot(litArg => pRuleArgs.map(_.rule.head).contains(litArg.lit)).map(_.lit)
   }
 
   def fullyExpandedStatements(implicit dState: DisputeState): Set[Literal] = {
