@@ -178,19 +178,18 @@ class Framework (val rules: Set[Rule],
 
 
     @tailrec
-    def opponentsUnblockedCompletePlayedPiecesRec(args: Set[Argument])(implicit dState: DisputeState,
+    def unblockedCompletePlayedPiecesBRec(args: Set[Argument])(implicit dState: DisputeState,
                                                     playedNonBlockedRules: Set[RuleArgument],
                                                     playedNonBlockedNonAssumptionsLitArguments: Set[LiteralArgument]): Set[Argument] = {
 
       val playedUnblockedCompleteRuleArgs = args.collect { case ruleArg: RuleArgument => ruleArg }
       val playedUnblockedCompleteLitArgs = args.collect { case litArg: LiteralArgument => litArg }
 
-      //val newLitArgs = pla
-      val newLitArgs = playedNonBlockedNonAssumptionsLitArguments.filter(_.parents.intersect(args).nonEmpty) -- playedUnblockedCompleteLitArgs
       val newRuleArgs = playedNonBlockedRules.filter(_.rule.body.subsetOf(playedUnblockedCompleteLitArgs.map(_.lit))) -- playedUnblockedCompleteRuleArgs
+      val newLitArgs = playedNonBlockedNonAssumptionsLitArguments.filter(_.parents.intersect(args).nonEmpty) -- playedUnblockedCompleteLitArgs
 
       if (newLitArgs.isEmpty && newRuleArgs.isEmpty) args
-      else opponentsUnblockedCompletePlayedPiecesRec(args ++ newRuleArgs ++ newLitArgs)
+      else unblockedCompletePlayedPiecesBRec(args ++ newRuleArgs ++ newLitArgs)
 
     }
 
