@@ -78,6 +78,8 @@ object Main {
     )
     = Seq(Move, DisputeAdvancement, TerminationCriteria).map(_.values.map(_.toString.toLowerCase()))
 
+    val possibleMoveTypesStrings = possibleMoves.keys.map(_.toString.toLowerCase()).toSet
+
     Console.in.readLine match {
       case "?" =>
         println(s"Possible moves:\n${Move.possibleMovesToString(possibleMoves)}\n")
@@ -132,17 +134,23 @@ object Main {
       case s"ct $newAdvancement" if !terminationCriteriaTypesStrings.contains(newAdvancement.toLowerCase) =>
         println(s"No advancement of type: $newAdvancement")
         (derivation, false, false, dAdvancement, tCriteria)
-      case s"$move" if moveTypesStrings.contains(move.toLowerCase) =>
+      case s"$move" if possibleMoveTypesStrings.contains(move.toLowerCase()) =>
         (derivation :+ possibleMoves(move).random.perform, false, true, dAdvancement, tCriteria) // implicit conversion
-      case s"$move $x" if moveTypesStrings.contains(move.toLowerCase) && digitRegex.matches(x) =>
+      case s"$move $x" if possibleMoveTypesStrings.contains(move.toLowerCase) && digitRegex.matches(x) =>
         val movesNo = x.toInt
         val movesOfType = possibleMoves(move) // implicit conversion
         if (movesOfType.size >= movesNo + 1) {
-           (derivation :+ movesOfType(movesNo).perform, false, true, dAdvancement, tCriteria)
+          (derivation :+ movesOfType(movesNo).perform, false, true, dAdvancement, tCriteria)
         } else {
           println(s"Wrong index. $move")
           (derivation, false, false, dAdvancement, tCriteria)
         }
+      case s"$move" if moveTypesStrings.contains(move.toLowerCase) && !possibleMoveTypesStrings.contains(move.toLowerCase) =>
+        println(s"Move $move not currently applicable.")
+        (derivation, false, false, dAdvancement, tCriteria)
+      case s"$move $_" if moveTypesStrings.contains(move.toLowerCase) && !possibleMoveTypesStrings.contains(move.toLowerCase) =>
+        println(s"Move $move not currently applicable.")
+        (derivation, false, false, dAdvancement, tCriteria)
 
       case _ => println("Error"); (derivation, false, false, dAdvancement, tCriteria)
     }
