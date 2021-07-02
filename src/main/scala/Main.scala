@@ -172,7 +172,12 @@ object Main {
       ("Unexpanded prop statements", framework.unexpandedPStatements),
       ("Defences", defences),
       ("Defence contraries", framework.contrariesOf(defences)),
-      ("Complete prop arguments", framework.completePiecesP)
+      ("Complete prop arguments", framework.completePiecesP),
+      ("J (for complete sem.)", framework.j),
+      ("Unexpanded statements for the proponent", framework.unexpandedPStatements),
+      ("Played fully expanded statements", framework.fullyExpandedStatements),
+      ("Played blocked pieces", framework.playedBlockedPieces),
+      ("Unblocked complete played pieces of the opponent", framework.unblockedCompletePlayedPiecesB),
     ).foreach{ case (desc, set) => println(s"$desc:\n\t${set.mkString(", ")}") }
 
     println("======================\n" +
