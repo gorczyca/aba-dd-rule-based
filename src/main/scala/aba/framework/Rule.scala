@@ -7,5 +7,6 @@ case class Rule(id: Option[String], head: Literal, body: Set[Literal]) {
   }
 
   // <- ←
-  override def toString: String = s"$head :- ${body.mkString(",")}"
+  //override def toString: String = s"$head :- ${body.mkString(",")}"
+  override def toString: String = s"$head ← ${body.mkString(",")}"
 }
