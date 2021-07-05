@@ -9,7 +9,7 @@ object OF2Move extends Move {
     val playedAssumptions = dState.bLitArgs.map(_.lit) intersect framework.assumptions
     val assumptionsContrariesDefences = framework.contrariesOf(framework.defences) intersect framework.assumptions
 
-    (assumptionsContrariesDefences union set).diff(playedAssumptions)
+    (assumptionsContrariesDefences union set).diff(playedAssumptions ++ framework.culprits)
       .map(LiteralArgument)
       .diff(dState.bLitArgs) // prevent from repeating
       .toSeq.sortBy(_.lit.id) // sorting
