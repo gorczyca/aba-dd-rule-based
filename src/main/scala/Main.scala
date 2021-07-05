@@ -39,13 +39,9 @@ object Main {
     implicit val lastState: DisputeState = derivation.last   // get last derivation state
 
     if (redraw) {
-      println(lastState.sequenceElement)
+      println(s"««« ${lastState.sequenceElement} »»»")
 
-      //  println(s"Arguments:\n\t${framework.decorateArguments.map(_._2).mkString(" ; ")}\n")
-      println(s"Dispute state:\n\t${framework.disputeStateToString()}\n")
-      println(s"Assumptions: \n\t${framework.decorateAssumptions.map(_._2).mkString(" ; ")}\n")
-      println(s"Rules:\n\t${framework.decorateRules.map(_._2).mkString(" ; ")}\n")
-      println(s"Moves sequence:\n\t${derivation.map(_.sequenceElement).mkString("; ")}\n")
+      println(s"${framework.disputeStateToString()}\n")
 
     }
 
@@ -94,6 +90,19 @@ object Main {
       case "i" | "info" =>
         println(s"Advancement type: $dAdvancement")
         println(s"Termination criteria type: $tCriteria")
+        (derivation, false, false, dAdvancement, tCriteria)
+      case "a" | "assumptions" =>
+        println(s"Assumptions: \n\t${framework.decorateAssumptions.map(_._2).mkString("; ")}\n")
+        (derivation, false, false, dAdvancement, tCriteria)
+      case "r" | "rules" =>
+        println(s"Rules:\n\t${framework.decorateRules.map(_._2).mkString("; ")}\n")
+        (derivation, false, false, dAdvancement, tCriteria)
+      case "moves" =>
+        println(s"Moves sequence:\n\t${derivation.map(_.sequenceElement).mkString("; ")}\n")
+        (derivation, false, false, dAdvancement, tCriteria)
+      case "m" | "more" =>
+        //
+        printAdditionalInformation
         (derivation, false, false, dAdvancement, tCriteria)
       case s"dot" =>
         val fileName = DotConverter.exportDotRepr()
@@ -155,8 +164,22 @@ object Main {
         println(s"Move $move not currently applicable.")
         (derivation, false, false, dAdvancement, tCriteria)
 
-      case _ => println("Error"); (derivation, false, false, dAdvancement, tCriteria)
+      case _ =>
+        println("Error")
+        (derivation, false, false, dAdvancement, tCriteria)
     }
+  }
+
+  def printAdditionalInformation(implicit dState: DisputeState, framework: Framework): Unit = {
+    val nonDefencesNonCulpritsRemainingAssumptions = (framework.assumptions -- framework.defences -- framework.culprits).toSeq.sortBy(_.id)
+    println(s"Non-defences, non-culprits remaining assumptions:\n\t${nonDefencesNonCulpritsRemainingAssumptions.mkString(", ")}")
+
+    val notPlayedAssumptions = nonDefencesNonCulpritsRemainingAssumptions.filterNot(ass => dState.bLitArgs.exists(_.lit == ass)).sortBy(_.id)
+    println(s"Non-played, non-culprits assumptions:\n\t${notPlayedAssumptions.mkString(", ")}")
+
+    // currently defended assumptions not in defenses
+    val currentlyDefendedAssumptionsNotInDefences = (framework.j -- framework.defences).toSeq.sortBy(_.id)
+    println(s"Currently defended assumptions not in defences:\n\t${currentlyDefendedAssumptionsNotInDefences.mkString(", ")}")
   }
 
   def printDebuggingInformation(implicit dState: DisputeState, framework: Framework): Unit = {

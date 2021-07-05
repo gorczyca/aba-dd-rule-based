@@ -4,7 +4,8 @@ import aba.move.Move.MoveType
 
 
 case class PotentialMove(ruleArgument: Option[RuleArgument],
-                         literalArgument: Option[LiteralArgument],
+                         // literalArgument: Option[LiteralArgument],
+                         assumptionArgument: Option[LiteralArgument],
                          literalArguments: Set[LiteralArgument],
                          moveType: MoveType,
                          additionalInfo: Option[String]) extends Ordered[PotentialMove] {
@@ -17,7 +18,7 @@ case class PotentialMove(ruleArgument: Option[RuleArgument],
       case None => literalArguments.toSet[Argument]   // TODO: do it better than toSet[Argument]
     }
 
-    val arg = (ruleArgument, literalArgument) match {
+    val arg = (ruleArgument, assumptionArgument) match {
       case (Some(_), Some(_)) => throw new IllegalArgumentException("Potential argument must either be literal or rule based.")
       case (Some(ruleArg), None) => ruleArg
       case (None, Some(litArg)) => litArg
@@ -30,20 +31,29 @@ case class PotentialMove(ruleArgument: Option[RuleArgument],
 
   override def toString: String = {
 
-    // TODO:
-    val additionalInfoStr = additionalInfo match {
-      case Some(addInfo) => s" ($addInfo)"
-      case _ => ""
+    // TODO: remove?
+//    val additionalInfoStr = additionalInfo match {
+//      case Some(addInfo) => s" ($addInfo)"
+//      case _ => ""
+//    }
+
+//    val ruleArgStr = ruleArgument match {
+//      case Some(ruleArg) => s"Rule: $ruleArg"
+//      case _ => ""
+//    }
+
+    // TODO? previously was showing all literal arguments, probably just remove
+    //val litArgStr = if (literalArguments.isEmpty) "" else s"Literals: ${literalArguments.mkString(",")}"
+
+    //s"$moveType$additionalInfoStr: $ruleArgStr $litArgStr"
+
+    (ruleArgument, assumptionArgument) match {
+      case (Some(_), Some(_)) => throw new IllegalArgumentException("Potential argument must either be literal or rule based.")
+      case (Some(ruleArg), None) => s"Rule: $ruleArg"
+      case (None, Some(litArg)) => s"Assumption: $litArg"
+      case _ => throw new IllegalArgumentException("Potential argument must either be literal or rule based.")
     }
 
-    val ruleArgStr = ruleArgument match {
-      case Some(ruleArg) => s"Rule: $ruleArg"
-      case _ => ""
-    }
-
-    val litArgStr = if (literalArguments.isEmpty) "" else s"Literals: ${literalArguments.mkString(",")}"
-
-    s"$moveType$additionalInfoStr: $ruleArgStr $litArgStr"
   }
 
 
