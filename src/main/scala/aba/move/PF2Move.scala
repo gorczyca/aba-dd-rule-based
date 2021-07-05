@@ -6,11 +6,11 @@ import aba.reasoner.{DisputeState, LiteralArgument, PotentialMove}
 object PF2Move extends Move {
   override def isPossible(set: Set[Literal])(implicit framework: Framework, dState: DisputeState): Seq[PotentialMove] = {
 
-    val union = (framework.contrariesOf(framework.culpritsCandidates) intersect framework.assumptions) union set
-    val unionContraries = framework.contrariesOf(union)
-    val setDiff =  dState.pLitArgs.map(_.lit) union unionContraries union framework.culprits union framework.contrariesOf(framework.defences) union framework.constraints
+    val varUnion = ((framework.contrariesOf(framework.culpritsCandidates) intersect framework.assumptions) union set)
+      .filterNot(lit => framework.contrariesOf(lit).contains(lit)) // filter self-contradicting
+    val setDiff =  dState.pLitArgs.map(_.lit) union framework.culprits union framework.contrariesOf(framework.defences) union framework.constraints
 
-    (union -- setDiff).map(LiteralArgument) // definition
+    (varUnion -- setDiff).map(LiteralArgument) // definition
       .diff(dState.pLitArgs)  // prevent from repeating
       .toSeq.sortBy(_.lit.id) // sorting
       .map( litArg => PotentialMove(None, Some(litArg), Set(litArg), Move.PF2, None) )
