@@ -84,6 +84,9 @@ object Main {
       case "?" =>
         println(s"Possible moves:\n${Move.possibleMovesToString(possibleMoves)}\n")
         (derivation, false, false, dAdvancement, tCriteria)
+      case "??" =>
+        println(s"Possible moves according to all dispute advancements:\n${Move.possibleMovesAccordingToAllAdvancementToString}\n")
+        (derivation, false, false, dAdvancement, tCriteria)
       case "debug" =>
         printDebuggingInformation
         (derivation, false, false, dAdvancement, tCriteria)

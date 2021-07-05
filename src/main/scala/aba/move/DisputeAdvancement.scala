@@ -9,11 +9,11 @@ object DisputeAdvancement extends Enumeration {
   type DisputeAdvancementType = Value
 
   val
-    DF,
     DAB,
     DABF,
     DC,
-    DS
+    DS,
+    DF
   = Value
 
   implicit def fromString(advancementTypeString: String): DisputeAdvancementType = values.find(_.toString.equalsIgnoreCase(advancementTypeString)) match {
