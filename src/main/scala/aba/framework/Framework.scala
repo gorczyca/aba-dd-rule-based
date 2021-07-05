@@ -362,10 +362,10 @@ class Framework (val rules: Set[Rule],
       case _ => decorateArguments.map(_._2).mkString(" ; ")
     }
 
-    s"({$argsString}, " +
-      s"{${sortSetOfLiterals(goalsAndCulprContrWOCompleteArgs).mkString(" ; ")}}, " +
-      s"{${sortSetOfLiterals(defences).mkString(" ; ")}}, " +
-      s"{${sortSetOfLiterals(culprits).mkString(" ; ")}})"
+    s"B:\n\t{$argsString}" +
+    s"\nGoals & culprit contraries (w/o complete pieces):\n\t{${sortSetOfLiterals(goalsAndCulprContrWOCompleteArgs).mkString(" ; ")}}" +
+    s"\nDefences:\n\t{${sortSetOfLiterals(defences).mkString(" ; ")}}" +
+    s"\nCulprits:\n\t{${sortSetOfLiterals(culprits).mkString(" ; ")}}"
   }
 
   // TODO: remove
