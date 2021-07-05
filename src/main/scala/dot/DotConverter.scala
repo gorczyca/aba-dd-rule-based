@@ -21,7 +21,7 @@ object DotConverter {
 
   private def getDotString(implicit dState: DisputeState, framework: Framework): String = {
 
-    val nodeDefaults = s"""node [fontname="times-bold", color="black", style="filled"]  """
+    val nodeDefaults = s"""node [ fontname="times-bold", color="black", style="filled" ]  """
 
     val parentAttr = """ label="", shape="circle", fillcolor="yellow", width=0.3 """
     val ruleShape = """ shape="hexagon" """
@@ -58,9 +58,18 @@ object DotConverter {
     )
 
     // TODO: naming should be better
-    // parent edges from blocked rule arguments to statements in opponent set
+    // parent edges from blocked rule arguments to parents of statements in opponent set
     val parentEdges4 = remainingBlockedRulesWithHeadsInOpponentRuleArgs.groupBy(_.rule.head)
-      .map { case (head, ruleArgs) => s"""{ ${ruleArgs.map(_.uid).mkString(", ")} } -> ${LiteralArgument(head).uid}""" }
+      .map { case (head, ruleArgs) => s"""{ ${ruleArgs.map(_.uid).mkString(", ")} } -> ${LiteralArgument(head).uid}p""" }
+
+    // additional edges from parents of statements to statements, for those statements that have no "actual" parents
+    // so no parents except for the remaining blocked rules
+    val statementsWithNoParentsExceptForBlockedRules = remainingBlockedRulesWithHeadsInOpponentRuleArgs.groupBy(_.rule.head)
+      .map { case (head, _) => LiteralArgument(head) }
+      .filter(_.parents.isEmpty)
+
+    val parentNodes2 = statementsWithNoParentsExceptForBlockedRules.map(litArg => s"""${litArg.uid}p [ $parentAttr ]""")
+    val parentEdges5 = statementsWithNoParentsExceptForBlockedRules.map(litArg => s"""${litArg.uid}p -> ${litArg.uid}""")
 
     // pairs - arguments (that have children) and those children
     val parentNodesTuples = dState.b.filter {
@@ -161,6 +170,7 @@ object DotConverter {
        |${"\t"}// NODES
        |${"\t"}// parent nodes
        |${"\t" + parentNodes.mkString("\n\t")}
+       |${"\t" + parentNodes2.mkString("\n\t")}
        |
        |${"\t"}// fact nodes
        |${"\t" + factNodes.mkString("\n\t")}
@@ -179,6 +189,7 @@ object DotConverter {
        |${"\t" + parentEdges2.mkString("\n\t")}
        |${"\t" + parentEdges3.mkString("\n\t")}
        |${"\t" + parentEdges4.mkString("\n\t")}
+       |${"\t" + parentEdges5.mkString("\n\t")}
        |
        |${"\t"}// fact edges
        |${"\t" + factEdges.mkString("\n\t")}
