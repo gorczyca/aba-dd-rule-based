@@ -7,7 +7,7 @@ import aba.reasoner.{Argument, DisputeState, LiteralArgument, RuleArgument}
 import scala.annotation.tailrec
 
 
-object DisputeStateAB {
+object DisputeStateAB_ {
   def apply(derivation: List[DisputeState])(implicit framework: Framework): DisputeStateAB = {
 
     implicit val lastState: DisputeState = derivation.last
@@ -93,6 +93,24 @@ object DisputeStateAB {
   }
 }
 
+
+//object DisputeStateAB {
+//  def apply(derivation: List[DisputeState])(implicit framework: Framework): DisputeStateAB = {
+//
+//    @tailrec
+//    def obtainPRec(): Set[ArgumentAB]
+//
+//  }
+//}
+
+
+/**
+ *
+ * @param id
+ * @param move
+ * @param b - only relevant arguments
+ * @param p - ditto
+ */
 case class DisputeStateAB(id: Int,
                           move: Option[MoveType],
                           b: Set[ArgumentAB], // TODO: should I do p here too?
