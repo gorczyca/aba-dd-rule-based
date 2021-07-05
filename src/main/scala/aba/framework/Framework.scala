@@ -260,7 +260,7 @@ class Framework (val rules: Set[Rule],
 
   def j(implicit dState: DisputeState): Set[Literal] = {
     val unblockedCompleteBLit = unblockedCompletePlayedPiecesB.collect { case litArg: LiteralArgument => litArg.lit } // performance
-    assumptions.filter(ass => contrariesOf(ass).intersect(unblockedCompleteBLit).isEmpty)
+    (assumptions -- culprits).filter(ass => contrariesOf(ass).intersect(unblockedCompleteBLit).isEmpty)
   }
 
 
