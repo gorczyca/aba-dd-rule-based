@@ -5,7 +5,7 @@ import aba.move.DisputeAdvancement.{DAB, DF, DisputeAdvancementType}
 import aba.move.{DisputeAdvancement, Move, TerminationCriteria}
 import aba.move.Move.MoveType
 import aba.move.TerminationCriteria.{TA, TerminationCriteriaType}
-import aba.reasoner.argumentBased.DisputeStateAB
+import aba.reasoner.argumentBased.DisputeStateAB_
 import aba.reasoner.{DisputeState, PotentialMove}
 import commandLineParser.CommandLineParser
 import dot.DotConverter
@@ -102,8 +102,8 @@ object Main {
       case s"dot $fileName" =>
         println(s"Graph representation exported to: $fileName")
         (derivation, false, false, dAdvancement, tCriteria)
-      case "a" =>
-        val dStateAB = DisputeStateAB(derivation)
+      case "arg" =>
+        val dStateAB = DisputeStateAB_(derivation)
         println(s"Dispute state (Argument-Based):\n\t${framework.disputeStateToString(Some(dStateAB.decorateArguments.map(_._2).mkString("; ")))}\n")
         println(s"Rules:\n\t${dStateAB.decorateRules.map(_._2).mkString("; ")}\n")
         (derivation, false, false, dAdvancement, tCriteria)
