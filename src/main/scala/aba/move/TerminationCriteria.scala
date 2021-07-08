@@ -3,6 +3,7 @@ package aba.move
 import aba.framework.Framework
 import aba.reasoner.{DisputeState, LiteralArgument}
 import aba.move.DisputeAdvancement.{DAB, DC, DF, DS}
+import aba.move.TerminationCriteria.{TC, TS}
 
 object TerminationCriteria extends Enumeration {
   type TerminationCriteriaType = Value
@@ -98,5 +99,17 @@ object TerminationCriteria extends Enumeration {
     println(s"Condition 2: ${if (condition2) "TRUE" else "FALSE" }")
     println(s"((Goals UNION CulpritContraries) SUBSETOF CompletePArgs)")
     println(s"(${framework.goals.mkString(", ")} UNION ${culpritContraries.mkString(", ")}) SUBSETOF ${completeArgsPLit.mkString(", ")})")
+
+    val conditionComplete = (framework.j -- framework.defences).isEmpty
+    println(s"Condition 'Complete': ${if (conditionComplete) "TRUE" else "FALSE" }")
+    println(s"((J \\ Defences) is empty?)")
+    println(s"({${framework.j.mkString(", ")}} \\ {${framework.defences.mkString(", ")}} is empty?)")
+    println(s"Left: (${(framework.j -- framework.defences).mkString(", ")})")
+
+    val conditionStable = (framework.defences ++ framework.culprits) == framework.assumptions
+    println(s"Condition 'Stable': ${if (conditionStable) "TRUE" else "FALSE" }")
+    println(s"((Defences UNION Culprits) == Assumptions)")
+    println(s"Left: (${(framework.assumptions -- (framework.defences ++ framework.culprits)).mkString(", ")})")
+
   }
 }
