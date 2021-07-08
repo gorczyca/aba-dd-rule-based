@@ -11,7 +11,7 @@ object CommandLineParser {
     import builder._
     OParser.sequence(
       programName("[Program name]"),
-      head("ABA-DD: Rule based.", "0.2.1"),
+      head("ABA-DD: Rule based.", "0.2.3"),
       // option -f, --file
       // TODO: File instead of string?
       arg[String]("<input file>")
