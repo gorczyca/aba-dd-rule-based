@@ -1,8 +1,9 @@
 package aba.move
 
 import aba.framework.Framework
-import aba.reasoner.{DisputeState, LiteralArgument}
+import aba.reasoner.{DisputeState, LiteralArgument, PotentialMove}
 import aba.move.DisputeAdvancement.{DAB, DC, DF, DS}
+import aba.move.Move.MoveType
 import aba.move.TerminationCriteria.{TC, TS}
 
 object TerminationCriteria extends Enumeration {
@@ -40,7 +41,7 @@ object TerminationCriteria extends Enumeration {
 
     val Seq((dabOpponentMoves, dabProponentMoves),
             (dfOpponentMoves, dfProponentMoves),
-            (dcOpponentMoves, dcProponentMoves),
+            (_, dcProponentMoves),
             (_, dsProponentMoves))
       = Seq(DisputeAdvancement(DAB),
             DisputeAdvancement(DF),
@@ -61,7 +62,7 @@ object TerminationCriteria extends Enumeration {
       case TC => (
         // prop condition
         proponentSeemsToBeWinning && (framework.j -- framework.defences).isEmpty &&
-           (dcOpponentMoves.forall(_._2.isEmpty) || dfOpponentMoves.filter(_._1.isForwardMove).forall(_._2.isEmpty)),
+          (dabOpponentMoves.forall(_._2.isEmpty) || dfOpponentMoves.filter(_._1.isForwardMove).forall(_._2.isEmpty)),
         // opp condition
         (opponentSeemsToBeWinning || (framework.j -- framework.defences).nonEmpty) &&
           (dcProponentMoves.forall(_._2.isEmpty) || dfProponentMoves.filter(_._1.isForwardMove).forall(_._2.isEmpty) )
@@ -72,7 +73,8 @@ object TerminationCriteria extends Enumeration {
           (dabOpponentMoves.forall(_._2.isEmpty) || dfOpponentMoves.filter(_._1.isForwardMove).forall(_._2.isEmpty)),
         // opp condition
         (opponentSeemsToBeWinning || ((framework.defences ++ framework.culprits) != framework.assumptions)) &&
-          dsProponentMoves.forall(_._2.isEmpty)
+          (dsProponentMoves.filter(_._1.isForwardMove).forall(_._2.isEmpty) ||
+            dsProponentMoves.filter(_._1.isBackwardMove).forall(_._2.isEmpty))
       )
     }
 
