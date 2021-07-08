@@ -172,14 +172,14 @@ object Main {
 
   def printAdditionalInformation(implicit dState: DisputeState, framework: Framework): Unit = {
     val nonDefencesNonCulpritsRemainingAssumptions = (framework.assumptions -- framework.defences -- framework.culprits).toSeq.sortBy(_.id)
-    println(s"Non-defences, non-culprits remaining assumptions:\n\t${nonDefencesNonCulpritsRemainingAssumptions.mkString(", ")}")
+    println(s"Non-defences, non-culprits remaining assumptions:\n\t${nonDefencesNonCulpritsRemainingAssumptions.mkString("; ")}")
 
     val notPlayedAssumptions = nonDefencesNonCulpritsRemainingAssumptions.filterNot(ass => dState.bLitArgs.exists(_.lit == ass)).sortBy(_.id)
-    println(s"Non-played, non-culprits assumptions:\n\t${notPlayedAssumptions.mkString(", ")}")
+    println(s"Non-played, non-culprits assumptions:\n\t${notPlayedAssumptions.mkString("; ")}")
 
     // currently defended assumptions not in defenses
     val currentlyDefendedAssumptionsNotInDefences = (framework.j -- framework.defences).toSeq.sortBy(_.id)
-    println(s"Currently defended assumptions not in defences:\n\t${currentlyDefendedAssumptionsNotInDefences.mkString(", ")}")
+    println(s"Currently defended assumptions not in defences:\n\t${currentlyDefendedAssumptionsNotInDefences.mkString("; ")}")
   }
 
   def printDebuggingInformation(implicit dState: DisputeState, framework: Framework): Unit = {
@@ -204,7 +204,7 @@ object Main {
       ("Played fully expanded statements", framework.fullyExpandedStatements),
       ("Played blocked pieces", framework.playedBlockedPieces),
       ("Unblocked complete played pieces of the opponent", framework.unblockedCompletePlayedPiecesB),
-    ).foreach{ case (desc, set) => println(s"$desc:\n\t${set.mkString(", ")}") }
+    ).foreach{ case (desc, set) => println(s"$desc:\n\t${set.mkString("; ")}") }
 
     println("======================\n" +
             " TERMINATION CRITERIA\n" +
