@@ -21,6 +21,8 @@ object DisputeAdvancement extends Enumeration {
     case None => throw new Exception(s"No advancement type: $advancementTypeString")
   }
 
+  //def advancementTypesPartialOrder = Seq(DAB, DABF, Array(DC, DS), DF)
+
   def apply(advancementType: DisputeAdvancementType)(implicit framework: Framework, dState: DisputeState): DisputeAdvancement = {
     val moves = advancementType match {
       case DF => Seq(
