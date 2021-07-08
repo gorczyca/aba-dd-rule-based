@@ -56,6 +56,26 @@ case class PotentialMove(ruleArgument: Option[RuleArgument],
 
   }
 
-
-
+  // to compare in set between sets of potential arguments
+//  override def hashCode(): Int = (moveType.toString + this.toString).hashCode
+//
+//  override def equals(obj: Any): Boolean = {
+//    obj match {
+//      case PotentialMove(thatRuleArgOpt, thatAssArgOpt, _, thatMType, _) if thatMType == moveType => {
+//        thatRuleArgOpt match {
+//          case Some(thatRuleArg) => this.ruleArgument match {
+//            case Some(ruleArg) => thatRuleArg.equals(ruleArg)
+//            case _ => false
+//          }
+//          case None => thatAssArgOpt match {
+//            case Some(thatAssArg) => this.assumptionArgument match {
+//              case Some(assArg) => thatAssArg.equals(assArg)
+//              case _ => false
+//            }
+//          }
+//        }
+//      }
+//      case _ => false
+//    }
+//  }
 }
