@@ -83,10 +83,19 @@ object Main {
       case "??" =>
         println(s"Possible moves according to all dispute advancements:\n${Move.possibleMovesAccordingToAllAdvancementToString}\n")
         (derivation, false, false, dAdvancement, tCriteria)
+      case "q" | "quit" =>
+        (derivation, true, false, dAdvancement, tCriteria)
+      case "h" | "help" =>
+        printHelp()
+        (derivation, false, false, dAdvancement, tCriteria)
       case "debug" =>
         printDebuggingInformation
         (derivation, false, false, dAdvancement, tCriteria)
-      case "s" | "show" => (derivation, false, true, dAdvancement, tCriteria)
+      case "s" | "show" =>
+        (derivation, false, true, dAdvancement, tCriteria)
+      case "d" =>
+        printDecoratorInformation
+        (derivation, false, false, dAdvancement, tCriteria)
       case "i" | "info" =>
         println(s"Advancement type: $dAdvancement")
         println(s"Termination criteria type: $tCriteria")
@@ -101,15 +110,27 @@ object Main {
         println(s"Moves sequence:\n\t${derivation.map(_.sequenceElement).mkString("; ")}\n")
         (derivation, false, false, dAdvancement, tCriteria)
       case "m" | "more" =>
-        //
         printAdditionalInformation
         (derivation, false, false, dAdvancement, tCriteria)
       case s"dot" =>
         val fileName = DotConverter.exportDotRepr()
         println(s"Graph representation exported to: $fileName")
         (derivation, false, false, dAdvancement, tCriteria)
-      case s"dot $fileName" =>
+      case s"dot s" =>
+        val fileName = DotConverter.exportDotRepr(gradientFill = false)
         println(s"Graph representation exported to: $fileName")
+        (derivation, false, false, dAdvancement, tCriteria)
+      case s"dot s $fileName" =>
+        val _ = DotConverter.exportDotRepr(gradientFill = false, outputFileNameOpt = Some(fileName))
+        println(s"Graph representation exported to: $fileName")
+        (derivation, false, false, dAdvancement, tCriteria)
+      case s"dot $fileName" =>
+        val _ = DotConverter.exportDotRepr(outputFileNameOpt = Some(fileName))
+        println(s"Graph representation exported to: $fileName")
+        (derivation, false, false, dAdvancement, tCriteria)
+      case s"legend" =>
+        val legFileName = DotConverter.exportLegend()
+        println(s"DOT legend exported to: $legFileName")
         (derivation, false, false, dAdvancement, tCriteria)
       case "arg" =>
         val dStateAB = DisputeStateAB_(derivation)
@@ -132,8 +153,6 @@ object Main {
       case s"b $x" =>
         print(s"Number required, $x passed.")
         (derivation, false, true, dAdvancement, tCriteria)
-      case "q" =>
-        (derivation, true, false, dAdvancement, tCriteria)
       case s"ct $newCriteria" if terminationCriteriaTypesStrings.contains(newCriteria.toLowerCase) =>
         println(s"Termination criteria set to: ${newCriteria.toUpperCase()}")
         (derivation, false, false, dAdvancement, newCriteria) // implicit conversion
@@ -211,6 +230,59 @@ object Main {
             "======================\n")
 
     TerminationCriteria.seemsToBeWinningDebug
+  }
+
+  def printHelp(): Unit = {
+    println("Program options:")
+    println("\t ?\t- print possible moves.")
+    println("\t ??\t- print possible moves according to all advancement types.")
+    println("\t h | help\t- print this help information.")
+    println("\t s | show\t- print dispute state.")
+    println("\t q | quit\t- quit.")
+    println("\t i | info\t- print information about selected advancement type and termination criteria.")
+    println("\t a\t- print assumptions.")
+    println("\t r\t- print rules.")
+    println("\t m | more\t- print more information.")
+    println("\t moves\t- print moves sequence.")
+    println("\t d\t- print info about decorators.")
+    println("\t dot [s] [filename]\t- export current dispute to a graph DOT file. Optionally:" +
+      "\n\t\ts - solid fill colours." +
+      "\n\t\tfilename - specify output filename.")
+    println("\t legend\t- export legend explaining used colours / shapes to a DOT file.")
+    println("\t f [n] - perform random move forward. Optionally:" +
+      "\n\t\tn - perform n random moves forward.")
+    println("\t b [n] - backward 1 move. Optionally:" +
+      "\n\t\tn - backward n moves.")
+    println("\t ct <T> - set termination criteria to <T>. Possible termination criteria are:" +
+      "\n\t\tTA, TC, TS (case insensitive)")
+    println("\t ca <A> - set advancement type to <A>. Possible advancement types are:" +
+      "\n\t\tDAB, DABF, DC, DS, DF (case insensitive)")
+    println("\t <MOVE> [i] - perform move of type <MOVE> (if possible). Optionally:" +
+      "\n\t\tPerform move of index i when viewing possible moves with \"?\"" +
+      "\n\t\tPossible move types are: {P,O}x{B,F}x{1,2}, i.e. PB1, PB2, PF1, PF2, OB1, OB2, OF1, OF2 (case insensitive)")
+  }
+
+  def printDecoratorInformation(): Unit = {
+    println("Played pieces:")
+    println("\t $\t- proponent piece.")
+    println("\t *\t- complete piece.")
+    println("\t **\t- complete piece for proponent.")
+    println("\t \"\t- unexpanded statements of the proponent.")
+    println("\t ^\t- assumptions and fully expanded statements.")
+    println("\t --\t- played blocked pieces.")
+    println("\t !\t- opponent assumptions, contraries of defences.\n")
+
+    println("Assumptions:")
+    println("\t @\t- assumption used by opponent.")
+    println("\t &\t- assumption used by proponent.")
+    println("\t ~\t- blocked assumptions.")
+    println("\t --\t- culprits.\n")
+
+    println("Rules:")
+    println("\t @\t- rule used by opponent.")
+    println("\t &\t- rule used by proponent.")
+    println("\t ~\t- Blocked rule because of inconsistency of constraints or contraries of defences in head or body.")
+    println("\t --\t- Blocked rules because of culprits in bodies.")
   }
 
   @tailrec
