@@ -6,8 +6,42 @@ import aba.reasoner.{DisputeState, LiteralArgument, RuleArgument}
 import java.io.PrintWriter
 
 object DotConverter {
-  def exportDotRepr(outputFileNameOpt: Option[String] = None)(implicit dState: DisputeState, framework: Framework): String = {
-    val reprString = getDotString
+
+  private def getColor(colorString: String, secondGradientColor: String = "white")(implicit isGradientFill: Boolean) = s"${if (isGradientFill) s"$secondGradientColor:" else ""}${colorString}"
+
+  private val nodeDefaults = s"""node [ fontname="times-bold", color="black", style="filled", fontsize="20" margin="0.1,0.0"  ]  """
+
+
+  // attributes
+  private val parentAttr = s""" label="" """
+  private val factAttr = s""" label="" """
+
+  // colors
+  private val proponentColor = "green"
+  private val defencesColor = "green4"
+  private val opponentColor = "yellow"
+  private val culpritColor = "red"
+  private val blockedColor = "orange"
+  private val unattackedOpponentsAssumptionsColor = "deeppink"
+  private val blockedRemainingRulesColor = "grey"
+  private val goalColor = "deepskyblue"
+  private val parentColor = "yellow"
+
+  // shapes
+  private val parentShape = """ shape="circle", width=0.15 """
+  private val ruleShape = """ shape="hexagon" """
+  private val factShape = """ shape="star", width=0.5"""
+  private val assumptionShape = """shape="diamond", width=0.75, height=0.75"""
+  private val statementShape = """shape="rectangle" """
+
+  // arrows styles
+  private val attackArrowStyle = """ fillcolor="white", arrowhead="onormal" """
+  private val propAttackArrowColor = """ color="black:white:black" """
+  private val oppAttackArrowColor = """ color="red:white:red"  """
+
+
+  def exportDotRepr(gradientFill: Boolean = true, outputFileNameOpt: Option[String] = None)(implicit dState: DisputeState, framework: Framework): String = {
+    val reprString = getDotString(gradientFill)
 
     val outputFileName = outputFileNameOpt match {
       case Some(name) => name
@@ -19,27 +53,83 @@ object DotConverter {
     outputFileName
   }
 
-  private def getDotString(implicit dState: DisputeState, framework: Framework): String = {
+  def exportLegend(gradientFill: Boolean = true): String = {
+    val legString = getLegendString(gradientFill)
+    val legFileName = "legend.dot"
 
-    val nodeDefaults = s"""node [ fontname="times-bold", color="black", style="filled" ]  """
+    new PrintWriter(legFileName) { write(legString); close() }
+    legFileName
+  }
 
-    val parentAttr = """ label="", shape="circle", fillcolor="yellow", width=0.3 """
-    val ruleShape = """ shape="hexagon" """
-    val factShape = """label="", shape="star", width=0.5"""
-    val assumptionShape = """shape="diamond", width=0.75, height=0.75"""
-    val statementShape = """shape="square", width=0.6"""
-    val proponentColor = """fillcolor="green" """
-    val defencesColor = """fillcolor="green4" """
-    val opponentColor = """fillcolor="yellow" """
-    val culpritColor = """fillcolor="red" """
-    val blockedColor = """fillcolor="orange" """
-    val unattackedOpponentsAssumptionsColor = """fillcolor="darkorange2" """
-    val blockedRemainingRulesColor = """fillcolor="grey" """
-    val goalColor = """fillcolor="deepskyblue" """
+  private def getLegendString(gradientFill: Boolean = true): String = {
 
-    val attackArrowStyle = """ fillcolor="white", arrowhead="onormal" """
-    val propAttackArrowColor = """ color="black:white:black" """
-    val oppAttackArrowColor = """ color="red:white:red"  """
+    implicit val isGradientFill: Boolean = gradientFill
+
+    s"""digraph Legend {
+       |${"\t"} node [ fontname="times-bold", color="black", style="filled", fontsize="20" margin="0.2,0", group="a" ]
+       |${"\t"} edge[style=invis]
+       |
+       |${"\t"}// NODES
+       |${"\t"} defence [ label="Defence", fillcolor="${getColor(defencesColor)}", $assumptionShape ]
+       |${"\t"} propRule [ label="Prop. rule", fillcolor="${getColor(proponentColor)}", $ruleShape ]
+       |${"\t"} propStatement [ label="Prop. statement", fillcolor="${getColor(proponentColor)}", $statementShape ]
+       |${"\t"} goal [ label="Goal", fillcolor="${getColor(goalColor)}", $statementShape ]
+       |
+       |${"\t"} culprit [ label="Culprit", fillcolor="${getColor(culpritColor)}", $assumptionShape ]
+       |${"\t"} oppRule [ label="Opp. rule", fillcolor="${getColor(opponentColor)}", $ruleShape ]
+       |${"\t"} oppStatement [ label="Opp. statement", fillcolor="${getColor(opponentColor)}", $statementShape ]
+       |${"\t"} oppAssumption [ label="Non-attacked opp. assumption", fillcolor="${getColor(unattackedOpponentsAssumptionsColor)}", $assumptionShape ]
+       |${"\t"} blockRemRule [ label="Blocked remaining rule", fillcolor="${getColor(blockedRemainingRulesColor)}", $ruleShape ]
+       |${"\t"} playedBlockPiece [ label="Played blocked piece", fillcolor="${getColor(blockedColor)}", $statementShape ]
+       |
+       |${"\t"} defence -> propRule -> propStatement -> goal
+       |${"\t"} culprit -> oppRule -> oppStatement -> oppAssumption -> playedBlockPiece -> blockRemRule
+       |
+       |${"\t"}	d1 -> d2 -> d3 -> d4 -> d5 -> d6
+       |${"\t"}	edge [ arrowhead="normal", arrowtail="dot", style="filled"];
+       |
+       |${"\t"} d1 [ label="", shape="circle", style="filled", fillcolor="white" ]
+       |${"\t"} d2 [ label="", shape="circle", style="filled", fillcolor="white" ]
+       |${"\t"} d1 -> d2 [ label="   child", fontsize="20", fontname="times-bold"]
+       |
+       |${"\t"} d3 [ label="", shape="circle", style="filled", fillcolor="white" ]
+       |${"\t"} d4 [ label="", shape="circle", style="filled", fillcolor="white" ]
+       |${"\t"} edge [ arrowhead="normal", arrowtail="dot", style="filled", $attackArrowStyle, $propAttackArrowColor]
+       |${"\t"}	d3 -> d4 [ label="   proponent attack", fontsize="20", fontname="times-bold"]
+       |
+       |${"\t"} d5 [ label="", shape="circle", style="filled", fillcolor="white" ]
+       |${"\t"} d6 [ label="", shape="circle", style="filled", fillcolor="white" ]
+       |${"\t"}	edge [ arrowhead="normal", arrowtail="dot", style="filled", $attackArrowStyle, $oppAttackArrowColor]
+       |${"\t"} d5 -> d6 [ label="   opponent attack", fontsize="20", fontname="times-bold"]
+       |
+       |}""".stripMargin
+  }
+
+  private def getDotString(gradientFill: Boolean = true)(implicit dState: DisputeState, framework: Framework): String = {
+
+
+    implicit val isGradientFill: Boolean = gradientFill
+
+    val nodeDefaults = s"""node [ fontname="times-bold", color="black", style="filled", fontsize="20" margin="0.1,0.0"  ]  """
+
+//    val parentAttr = s""" label="", shape="circle", fillcolor="${getColor("yellow")}", width=0.15 """
+//    val ruleShape = """ shape="hexagon" """
+//    val factShape = """label="", shape="star", width=0.5"""
+//    val assumptionShape = """shape="diamond", width=0.75, height=0.75"""
+//    val statementShape = """shape="rectangle" """
+//    //val statementShape = """shape="square", width=0.6"""
+//    val proponentColor = getColor("green")
+//    val defencesColor = getColor("green4")
+//    val opponentColor = getColor("yellow")
+//    val culpritColor = getColor("red")
+//    val blockedColor = getColor("orange")
+//    val unattackedOpponentsAssumptionsColor = getColor("deeppink")
+//    val blockedRemainingRulesColor = getColor("grey")
+//    val goalColor = getColor("deepskyblue")
+
+//    val attackArrowStyle = """ fillcolor="white", arrowhead="onormal" """
+//    val propAttackArrowColor = """ color="black:white:black" """
+//    val oppAttackArrowColor = """ color="red:white:red"  """
 
     val defencesArgs = dState.pLitArgs.filter(litArg => framework.defences.contains(litArg.lit))
     val unattackedOpponentsAssumptions = (dState.bLitArgs.filter(litArg => framework.assumptions.contains(litArg.lit)) -- defencesArgs)
@@ -54,7 +144,7 @@ object DotConverter {
 
     // nodes for those rules
     val remainingBlockedRulesNodes = remainingBlockedRulesWithHeadsInOpponentRuleArgs.map(
-      ruleArg => s"""${ruleArg.uid} [  label="${ruleArg.toString}" $blockedRemainingRulesColor $ruleShape]"""
+      ruleArg => s"""${ruleArg.uid} [  label="${ruleArg.toString}", fillcolor="${getColor(blockedRemainingRulesColor)}" $ruleShape]"""
     )
 
     // TODO: naming should be better
@@ -68,7 +158,7 @@ object DotConverter {
       .map { case (head, _) => LiteralArgument(head) }
       .filter(_.parents.isEmpty)
 
-    val parentNodes2 = statementsWithNoParentsExceptForBlockedRules.map(litArg => s"""${litArg.uid}p [ $parentAttr ]""")
+    val parentNodes2 = statementsWithNoParentsExceptForBlockedRules.map(litArg => s"""${litArg.uid}p [ $parentAttr, $parentShape, fillcolor="${getColor(parentColor)}" ]""")
     val parentEdges5 = statementsWithNoParentsExceptForBlockedRules.map(litArg => s"""${litArg.uid}p -> ${litArg.uid}""")
 
     // pairs - arguments (that have children) and those children
@@ -77,7 +167,7 @@ object DotConverter {
       //case ruleArg: RuleArgument => ruleArg.rule.body.isEmpty // facts
       case _ => false   // TODO: is it necessary?
     }.map(arg =>
-      (arg, s"""${arg.uid}p [ $parentAttr ]""")
+      (arg, s"""${arg.uid}p [ $parentAttr, $parentShape, fillcolor="${getColor(parentColor)}" ]""")
     )
 
     val parentEdges3 = remainingBlockedRulesWithHeadsInOpponentRuleArgs.filter(_.parentsIncludingCulprits.nonEmpty)
@@ -85,19 +175,19 @@ object DotConverter {
 
     val remainingBlockedRulesParentNodesTuples = remainingBlockedRulesWithHeadsInOpponentRuleArgs
       .filter(_.parentsIncludingCulprits.nonEmpty)
-      .map(ruleArg => (ruleArg, s""" ${ruleArg.uid}p [ $parentAttr ] """) )
+      .map(ruleArg => (ruleArg, s""" ${ruleArg.uid}p [ $parentAttr, $parentShape, fillcolor="${getColor(parentColor)}" ] """) )
 
     val parentNodes = (parentNodesTuples ++ remainingBlockedRulesParentNodesTuples).map(_._2)
 
     val parentEdges1 = (parentNodesTuples ++ remainingBlockedRulesParentNodesTuples).map(tuple =>
-      s""" ${tuple._1.uid + "p"}  -> ${tuple._1.uid} """)
+      s"""${tuple._1.uid + "p"} -> ${tuple._1.uid} """)
 
     // facts
     val facts = dState.bRuleArgs.filter( _.rule.body.isEmpty )
 
     // stars
     val factNodes = facts.map ( ruleArg =>
-      s""" ${ruleArg.uid}f [ $factShape, ${if (dState.pRuleArgs.contains(ruleArg)) proponentColor else opponentColor }  ]"""
+      s""" ${ruleArg.uid}f [ $factAttr, $factShape, fillcolor="${if (dState.pRuleArgs.contains(ruleArg)) getColor(proponentColor) else getColor(opponentColor) }"  ]"""
     )
 
     // skip the rule argument, when there is an empty body. i.e.
@@ -105,14 +195,17 @@ object DotConverter {
     // ☆ -> ○ -> s
     // instead of
     // ☆ -> ○ -> <s:-> -> ○ -> s
-    val parentFactNodes = facts.map ( arg => s"""${LiteralArgument(arg.rule.head).uid}p [ $parentAttr ]"""  )
+    val parentFactNodes = facts.map ( arg => s"""${LiteralArgument(arg.rule.head).uid}p [ $parentAttr, $parentShape, fillcolor="${getColor(parentColor)}" ]"""  )
     // parent edges for facts
     val factEdges = facts.map(arg => s"${arg.uid}f -> ${LiteralArgument(arg.rule.head).uid}p")
 
     val parentEdges2 = dState.b.filter(_.parents.exists {
       case _: LiteralArgument => true
       case ruleArg: RuleArgument => ruleArg.rule.body.nonEmpty
-    }).map(arg => s""" { ${arg.parents.map(_.uid).mkString(" ") } } -> ${arg.uid + "p"} """)
+    }).map(arg => s"""{ ${arg.parents.filter {
+      case _: LiteralArgument => true
+      case ruleArg: RuleArgument => ruleArg.rule.body.nonEmpty
+    } .map(_.uid).mkString(" ") } } -> ${arg.uid + "p"} """)
 
 
     // parent edges from B + culprits to blocked rules
@@ -126,15 +219,15 @@ object DotConverter {
     }.map( arg =>
       s"${arg.uid} [ " +
         s"""label="${arg.toString}", """  +
-        s"${ arg match {
+        s"""fillcolor="${getColor( arg match {
           case litArg: LiteralArgument if framework.goals.contains(litArg.lit) => goalColor
           case litArg: LiteralArgument if defencesArgs.contains(litArg) => defencesColor
           case a if dState.p.contains(a) => proponentColor
           case litArg: LiteralArgument if unattackedOpponentsAssumptions.contains(litArg) => unattackedOpponentsAssumptionsColor
           case a if playedBlockedPieces.contains(a) => blockedColor
           case _ => opponentColor
-        }
-        }," +
+        })
+        }",""" +
         s" ${arg match {
           case _: RuleArgument => ruleShape
           case litArgument: LiteralArgument if framework.assumptions.contains(litArgument.lit) => assumptionShape
@@ -143,7 +236,7 @@ object DotConverter {
     )
 
     val culpritNodes = framework.culprits.map(LiteralArgument).map(litArg =>
-      s""" ${litArg.uid} [ label="${litArg.toString}", $assumptionShape, $culpritColor ] """
+      s""" ${litArg.uid} [ label="${litArg.toString}", $assumptionShape, fillcolor="${getColor(culpritColor)}" ] """
     )
 
     val propAttacks = (framework.culprits ++ framework.contrariesOf(framework.defences))
