@@ -266,7 +266,7 @@ class Framework (val rules: Set[Rule],
 
   def decorateAssumptions(implicit dState: DisputeState): Seq[(Literal, String)] = {
     // TODO: improve performance
-    def isProponentAssumption(lit: Literal): String = if (dState.pLitArgs.map(_.lit).contains(lit)) "&" else ""
+    def isProponentAssumption(lit: Literal): String = if (defences.contains(lit)) "&" else ""
     // TODO:
     def isOpponentAssumption(lit: Literal): String = if ((dState.bLitArgs -- dState.pLitArgs).map(_.lit).contains(lit)) "@" else ""
     def isBlockedForP(lit: Literal): String = if (blockedAssumptionsP.contains(lit)) "~" else ""
@@ -311,16 +311,14 @@ class Framework (val rules: Set[Rule],
 
   def decorateArguments(implicit dState: DisputeState): Seq[(Argument, String)] = {
 
-    // TODO: for performance reasons, evaluate it once, do not calculate it every time
-    val culprits_ = culprits
-
-
     def isProponentPiece(arg: Argument): String = if (dState.p.contains(arg)) "$" else ""
     def isCompletePiece(arg: Argument): String = if (completePiecesP.contains(arg)) "**" else if (completePiecesB.contains(arg)) "*" else ""
     def isUnexpandedStatementP(arg: Argument): String = arg match {
       case litArg: LiteralArgument if unexpandedPStatements.contains(litArg.lit) => "\""
       case _ => ""
     }
+
+    def isPlayedBlockedPiece(arg: Argument): String = if (playedBlockedPieces.contains(arg)) "--" else ""
 
     def isAssumptionOrFullyExpandedStatement(arg: Argument): String = {
       arg match {
@@ -336,7 +334,7 @@ class Framework (val rules: Set[Rule],
     }
 
     val decFunctions = isProponentPiece _ :: isCompletePiece _ :: isUnexpandedStatementP _ :: isAssumptionOrFullyExpandedStatement _ ::
-      isOpponentAssOrDefContr _ :: Nil
+      isOpponentAssOrDefContr _ :: isPlayedBlockedPiece _ :: Nil
 
     dState.b.toSeq.sortBy {
       case litArg: LiteralArgument => litArg.lit.id
@@ -359,13 +357,13 @@ class Framework (val rules: Set[Rule],
 
     val argsString = argumentsOptString match {
       case Some(string) => string
-      case _ => decorateArguments.map(_._2).mkString(" ; ")
+      case _ => decorateArguments.map(_._2).mkString("; ")
     }
 
     s"B:\n\t{$argsString}" +
-    s"\nGoals & culprit contraries (w/o complete pieces):\n\t{${sortSetOfLiterals(goalsAndCulprContrWOCompleteArgs).mkString(" ; ")}}" +
-    s"\nDefences:\n\t{${sortSetOfLiterals(defences).mkString(" ; ")}}" +
-    s"\nCulprits:\n\t{${sortSetOfLiterals(culprits).mkString(" ; ")}}"
+    s"\nGoals & culprit contraries (w/o complete pieces):\n\t{${sortSetOfLiterals(goalsAndCulprContrWOCompleteArgs).mkString("; ")}}" +
+    s"\nDefences:\n\t{${sortSetOfLiterals(defences).mkString("; ")}}" +
+    s"\nCulprits:\n\t{${sortSetOfLiterals(culprits).mkString("; ")}}"
   }
 
   // TODO: remove
