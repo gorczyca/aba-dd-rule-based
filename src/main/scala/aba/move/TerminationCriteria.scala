@@ -73,8 +73,7 @@ object TerminationCriteria extends Enumeration {
           (dabOpponentMoves.forall(_._2.isEmpty) || dfOpponentMoves.filter(_._1.isForwardMove).forall(_._2.isEmpty)),
         // opp condition
         (opponentSeemsToBeWinning || ((framework.defences ++ framework.culprits) != framework.assumptions)) &&
-          (dsProponentMoves.filter(_._1.isForwardMove).forall(_._2.isEmpty) ||
-            dsProponentMoves.filter(_._1.isBackwardMove).forall(_._2.isEmpty))
+          dsProponentMoves.forall(_._2.isEmpty)
       )
     }
 

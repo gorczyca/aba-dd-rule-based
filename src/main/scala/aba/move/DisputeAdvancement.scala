@@ -57,13 +57,13 @@ object DisputeAdvancement extends Enumeration {
         (PB2, Set.empty[Literal]),
         (PF1, framework.j),
         (PF2, framework.j),
-        (OB1, framework.contrariesOf(framework.j)),
-        (OB2, framework.contrariesOf(framework.j)),
+        (OB1, Set.empty[Literal]),
+        (OB2, Set.empty[Literal]),
         (OF2, Set.empty[Literal]),
       )
       case DS => Seq(
-        (PB1, framework.contrariesOf(framework.assumptions)),
-        (PB2, framework.contrariesOf(framework.assumptions)),
+        (PB1, Set.empty[Literal]),
+        (PB2, Set.empty[Literal]),
         (PF1, framework.assumptions),
         (PF2, framework.assumptions),
         (OB1, Set.empty[Literal]),
