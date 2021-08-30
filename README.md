@@ -15,55 +15,39 @@ A dispute state is presented in the following way:
 ```
 <dispute state number>. <move type>: <rule / assumption>
 Dispute state:
-  (<B>, <goals and contraries of culprits without complete arguments for proponent>, <defences>, <culprits>)
+  <B>:
   
-Assumptions:
-  <assumptions>
+  <goals and contraries of culprits without complete arguments for proponent>
   
-Rules:
-  <rules>
-
-Move sequence:
-  <move sequence>
+  <defences>
+  
+  <culprits>
+ 
   
 [Information who won the game if applicable]  
 ```
 
 e.g.:
 
-```
-11. OB1: e<-d
-Dispute state:
-	({$**"^a ; $**"^c ; *!d ; *d <- g ; *d <- a ; *e <- d ; $**e <- a ; $**e ; $**^f ; $**f <- c ; $**g <- e ; $**^g ; *h <- f ; *!h ; $**i <-  ; $**^i}, {}, {a ; c}, {b}) 
-	
-Assumptions:
-	&a ; ~--b ; &c
-	
-Rules:
-	@~d <- a ; @~d <- g ; @~e <- d ; &e <- a ; &f <- c ; &g <- e ; @~h <- f ; &i <-
-	
-Moves sequence:
-	0. (init); 1. PB1: g <- e; 2. PF1: i <- ; 3. PF2: c; 4. OF1: f <- c; 5. PF2: a; 6. PB1: e <- a; 7. PF1: f <- c; 8. OF1: h <- f; 9. OF1: d <- g; 10. OB2: d <- a; 11. OB1: e <- d
-	
-Game over. Opponent won.
-```
-
 ## Inputs
 Press one of the following button followed by `Enter`:
  - `?` - print possible moves in current situation, grouped by the type of the move.
- - `s` / `show` - print information  about current dispute state
+ - `s` | `show` - print information  about current dispute state
  - `f` - perform random move forward
  - `f <N>` - perform `N` random moves forward (if possible)
+ - `h` | `help` - show help
+ - `d` - show info about decorators
+ - `legend` - generate a DOT file explaining used shapes and colours
  - `b` - backtrack once
  - `bb` - backtrack to the very beginning (initial state)
  - `b <N>` - backtrack `N` times (if possible)
- - `q` - quit
+ - `q` | `quit` - quit
  - `a` - switch to argument-based dispute state representation **(does not work correctly yet)**
  - `<move type>` - perform random move of type `move type`
  - `<move type> <index>` - perform a move of type `move type` and of index `index` (according to the moves listed when inputting `?`)
- - `dot` - generate a DOT graph representation based on rule-based graph to a file
- - `dot <filename>` - generate a DOT graph representation based on rule-based graph to `<filename>` file
- - `i` / `info` - print information about currently set **dispute advancement type** and **termination criteria type**
+ - `dot [s]`  - generate a DOT graph representation based on rule-based graph to a file. When used with `s` (optional), solid colours are used for fillings instead of gradients
+ - `dot [s] <filename>` - generate a DOT graph representation based on rule-based graph to `<filename>` file
+ - `i` | `info` - print information about currently set **dispute advancement type** and **termination criteria type**
  - `ca <dispute advancement type>` - set the dispute advancement type to `<dispute advancement type>` 
  - `ct <termination criteria type>` - set the termination criteria type to `<termination criteria type>`
  
@@ -75,4 +59,11 @@ Press one of the following button followed by `Enter`:
 
 #### Possible `<termination criteria type>`s are (case insensitive): 
 `TA`, `TC`, `TS`
+
+# Generated graphical output example (converted from DOT to PNG)
+![ds6_gradient](https://user-images.githubusercontent.com/43420734/125137442-fa4adf00-e10c-11eb-9123-cfd036899dee.png)
+
+where the meaning of shapes and colours is as follows:
+
+![legend](https://user-images.githubusercontent.com/43420734/125137482-0afb5500-e10d-11eb-94d4-8df46ae7abe6.png)
 
