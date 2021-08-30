@@ -7,9 +7,10 @@ object OF2Move extends Move {
   override def isPossible(set: Set[Literal])(implicit framework: Framework, dState: DisputeState): Seq[PotentialMove] = {
 
     val playedAssumptions = dState.bLitArgs.map(_.lit) intersect framework.assumptions
-    val assumptionsContrariesDefences = framework.contrariesOf(framework.defences) intersect framework.assumptions
+    val contrariesDefencesUnion = framework.contrariesOf(framework.defences) union set
 
-    (assumptionsContrariesDefences union set).diff(playedAssumptions ++ framework.culprits)
+    // restrict only to assumptions
+    (contrariesDefencesUnion intersect framework.assumptions).diff(playedAssumptions ++ framework.culprits)
       .map(LiteralArgument)
       .diff(dState.bLitArgs) // prevent from repeating
       .toSeq.sortBy(_.lit.id) // sorting

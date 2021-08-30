@@ -1,0 +1,22 @@
+% Assumptions
+asm(a).
+asm(b).
+asm(c).
+asm(d).
+
+% Contraries
+contrary(a,t).
+contrary(b,r).
+contrary(c,t).
+contrary(d,c).
+
+% Rules
+rule(p,[q]).
+rule(q,[a]).
+rule(r,[p]).
+rule(t,[b]).
+rule(t,[p,s]).
+rule(t,[q,u,d]).
+
+%G
+goal(p).
