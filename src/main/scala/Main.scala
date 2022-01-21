@@ -1,14 +1,14 @@
 import scala.language.implicitConversions
-
 import aba.framework.Framework
 import aba.move.DisputeAdvancement.{DAB, DF, DisputeAdvancementType}
 import aba.move.{DisputeAdvancement, Move, TerminationCriteria}
 import aba.move.Move.MoveType
 import aba.move.TerminationCriteria.{TA, TerminationCriteriaType}
 import aba.reasoner.argumentBased.DisputeStateAB_
+import aba.reasoner.argumentBased2.DisputeStateAB2
 import aba.reasoner.{DisputeState, PotentialMove}
 import commandLineParser.CommandLineParser
-import dot.DotConverter
+import dot.{ABDotConverter, DotConverter}
 
 import scala.annotation.tailrec
 
@@ -25,15 +25,15 @@ object Main {
 
         val defaultDAdvancement = DAB
         val defaultTCriteria = TA
-        disputeDerivation(initialDState :: Nil, redraw = true, defaultDAdvancement, defaultTCriteria)
-        disputeDerivation(initialDState :: Nil, redraw = true, defaultDAdvancement, defaultTCriteria)
+        disputeDerivation(initialDState :: Nil, redraw = true, currentGenDot = false, currentGenArg = false, defaultDAdvancement, defaultTCriteria)
       case _ =>
     }
 
   }
 
   @tailrec
-  def disputeDerivation(derivation: List[DisputeState], redraw: Boolean, dAdvancementType: DisputeAdvancementType, tCriteriaType: TerminationCriteriaType)
+  def disputeDerivation(derivation: List[DisputeState], redraw: Boolean, currentGenDot: Boolean, currentGenArg: Boolean,
+                        dAdvancementType: DisputeAdvancementType, tCriteriaType: TerminationCriteriaType)
                        (implicit framework: Framework): List[DisputeState] = {
 
     implicit val lastState: DisputeState = derivation.last   // get last derivation state
@@ -52,18 +52,39 @@ object Main {
       case _ =>
     }
 
-    val (newDerivation, stop, nextRedraw, nextAdvancementType, nextTerminationType) = progressDerivation(derivation, dAdvancementType, tCriteriaType)
+    if (currentGenArg) generateABRepresentation()
+    if (currentGenDot) DotConverter.exportDotRepr()
 
-    if (!stop) disputeDerivation(newDerivation, nextRedraw, nextAdvancementType, nextTerminationType)
+    val (newDerivation, stop, nextRedraw, nextGenDot, nextGenArg, nextAdvancementType, nextTerminationType) = progressDerivation(derivation, currentGenDot, currentGenArg, dAdvancementType, tCriteriaType)
+
+    if (!stop) disputeDerivation(newDerivation, nextRedraw, nextGenDot, nextGenArg, nextAdvancementType, nextTerminationType)
     else newDerivation
   }
 
+  private def generateABRepresentation(showCircular: Boolean=false, showIncomplete: Boolean=true, outputName: String = "temp_arg.dot")(implicit dState: DisputeState, framework: Framework): String = {
+    val actualPropGoals = framework.goals union framework.contrariesOf(framework.culprits)
+    val propArgs = DisputeStateAB2.create_arguments(actualPropGoals, dState.pRuleArgs.map(_.rule))
+
+    val opponentGoals = framework.contrariesOf(framework.defences) intersect dState.bLitArgs.map(_.lit) // those that actually have been uttered
+    val oppArgs = DisputeStateAB2.create_arguments(opponentGoals, dState.bRuleArgs.map(_.rule))
+    ABDotConverter.exportDotRepr(propArgs, oppArgs, outputName)
+
+    outputName
+  }
+
   def progressDerivation(derivation: List[DisputeState],
+                         genDot: Boolean,
+                         genArg: Boolean,
                          dAdvancement: DisputeAdvancementType,
                          tCriteria: TerminationCriteriaType)(implicit framework: Framework,
                                                          possibleMoves: Map[MoveType, Seq[PotentialMove]],
                                                          lastState: DisputeState):
-  (List[DisputeState], Boolean, Boolean, DisputeAdvancementType, TerminationCriteriaType) = {
+  (List[DisputeState],
+    Boolean, // stop
+    Boolean, // nextRedraw
+    Boolean, // nextGenDot
+    Boolean, // nextGenArg
+    DisputeAdvancementType, TerminationCriteriaType) = {
 
     val digitRegex = """\d+""".r
 
@@ -77,115 +98,138 @@ object Main {
     val possibleMoveTypesStrings = possibleMoves.keys.map(_.toString.toLowerCase()).toSet
 
     Console.in.readLine match {
+      case "arg" =>
+        val fileName = s"arg_dot_repr_step${lastState.id}.dot"
+        generateABRepresentation(outputName = fileName)
+        println(s"Argument-based representation exported to: $fileName")
+        (derivation, false,  false, genDot, genArg, dAdvancement, tCriteria)
+      case s"arg $fileName" =>
+        generateABRepresentation(outputName = fileName)
+        println(s"Argument-based representation exported to: $fileName")
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
+      case s"argp 1" =>
+        println(s"Continuous argument representation generation switched ON.")
+        (derivation, false, false, genDot, true, dAdvancement, tCriteria)
+      case s"argp 0" =>
+        println(s"Continuous argument representation generation switched OFF.")
+        (derivation, false, false, genDot, false, dAdvancement, tCriteria)
       case "?" =>
         println(s"Possible moves:\n${Move.possibleMovesToString(possibleMoves)}\n")
-        (derivation, false, false, dAdvancement, tCriteria)
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case "??" =>
         println(s"Possible moves according to all dispute advancements:\n${Move.possibleMovesAccordingToAllAdvancementToString}\n")
-        (derivation, false, false, dAdvancement, tCriteria)
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case "q" | "quit" =>
-        (derivation, true, false, dAdvancement, tCriteria)
+        (derivation, true, false, genDot, genArg, dAdvancement, tCriteria)
       case "h" | "help" =>
         printHelp()
-        (derivation, false, false, dAdvancement, tCriteria)
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case "debug" =>
         printDebuggingInformation
-        (derivation, false, false, dAdvancement, tCriteria)
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case "s" | "show" =>
-        (derivation, false, true, dAdvancement, tCriteria)
+        (derivation, false, true, genDot, genArg, dAdvancement, tCriteria)
       case "d" =>
-        printDecoratorInformation
-        (derivation, false, false, dAdvancement, tCriteria)
+        printDecoratorInformation()
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case "i" | "info" =>
         println(s"Advancement type: $dAdvancement")
         println(s"Termination criteria type: $tCriteria")
-        (derivation, false, false, dAdvancement, tCriteria)
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case "a" | "assumptions" =>
         println(s"Assumptions: \n\t${framework.decorateAssumptions.map(_._2).mkString("; ")}\n")
-        (derivation, false, false, dAdvancement, tCriteria)
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case "r" | "rules" =>
         println(s"Rules:\n\t${framework.decorateRules.map(_._2).mkString("; ")}\n")
-        (derivation, false, false, dAdvancement, tCriteria)
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case "moves" =>
         println(s"Moves sequence:\n\t${derivation.map(_.sequenceElement).mkString("; ")}\n")
-        (derivation, false, false, dAdvancement, tCriteria)
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case "m" | "more" =>
         printAdditionalInformation
-        (derivation, false, false, dAdvancement, tCriteria)
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
+      case s"dotp 1" =>
+        println(s"Continuous rule based representation generation switched ON.")
+        (derivation, false, false, true, genArg, dAdvancement, tCriteria)
+      case s"dotp 0" =>
+        println(s"Continuous rule based representation generation switched OFF.")
+        (derivation, false, false, false, genArg, dAdvancement, tCriteria)
       case s"dot" =>
-        val fileName = DotConverter.exportDotRepr()
-        println(s"Graph representation exported to: $fileName")
-        (derivation, false, false, dAdvancement, tCriteria)
+        val fileName = s"rule_repr_step${lastState.id}.dot"
+        DotConverter.exportDotRepr(outputFileName = fileName)
+        println(s"Rule based representation exported to: $fileName")
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case s"dot s" =>
-        val fileName = DotConverter.exportDotRepr(gradientFill = false)
-        println(s"Graph representation exported to: $fileName")
-        (derivation, false, false, dAdvancement, tCriteria)
+        val fileName = s"rule_repr_step${lastState.id}.dot"
+        DotConverter.exportDotRepr(gradientFill = false)
+        println(s"Rule based representation exported to: $fileName")
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case s"dot s $fileName" =>
-        val _ = DotConverter.exportDotRepr(gradientFill = false, outputFileNameOpt = Some(fileName))
-        println(s"Graph representation exported to: $fileName")
-        (derivation, false, false, dAdvancement, tCriteria)
+        DotConverter.exportDotRepr(gradientFill = false, outputFileName = fileName)
+        println(s"Rule based representation exported to: $fileName")
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case s"dot $fileName" =>
-        val _ = DotConverter.exportDotRepr(outputFileNameOpt = Some(fileName))
-        println(s"Graph representation exported to: $fileName")
-        (derivation, false, false, dAdvancement, tCriteria)
+        DotConverter.exportDotRepr(outputFileName = fileName)
+        println(s"Rule based representation exported to: $fileName")
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case s"legend" =>
         val legFileName = DotConverter.exportLegend()
         println(s"DOT legend exported to: $legFileName")
-        (derivation, false, false, dAdvancement, tCriteria)
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case "arg" =>
         val dStateAB = DisputeStateAB_(derivation)
         println(s"Dispute state (Argument-Based):\n\t${framework.disputeStateToString(Some(dStateAB.decorateArguments.map(_._2).mkString("; ")))}\n")
         println(s"Rules:\n\t${dStateAB.decorateRules.map(_._2).mkString("; ")}\n")
-        (derivation, false, false, dAdvancement, tCriteria)
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case "f" =>
-        (forward(derivation, dAdvancement, tCriteria), false, true, dAdvancement, tCriteria)
+        (forward(derivation, dAdvancement, tCriteria), false, true, genDot, genArg, dAdvancement, tCriteria)
       case s"f $x" if digitRegex.matches(x) =>
-        (forward(derivation, dAdvancement, tCriteria, x.toInt), false, true, dAdvancement, tCriteria)  // TODO: regexes ?
+        (forward(derivation, dAdvancement, tCriteria, x.toInt), false, true, genDot, genArg, dAdvancement, tCriteria)  // TODO: regexes ?
       case s"f $x" =>
         print(s"Number required, $x passed.")
-        (derivation, false, true, dAdvancement, tCriteria)  // TODO:
+        (derivation, false, true, genDot, genArg, dAdvancement, tCriteria)  // TODO:
       case "b" =>
-        (derivation.safeBacktrack(), false, true, dAdvancement, tCriteria)
+        (derivation.safeBacktrack(), false, true, genDot, genArg, dAdvancement, tCriteria)
       case "bb" =>
-        (derivation.take(1), false, true, dAdvancement, tCriteria)
+        (derivation.take(1), false, true, genDot, genArg, dAdvancement, tCriteria)
       case s"b $x" if digitRegex.matches(x) =>
-        (derivation.safeBacktrack(x.toInt), false, true, dAdvancement, tCriteria)  // TODO: regexes ?
+        (derivation.safeBacktrack(x.toInt), false, true, genDot, genArg, dAdvancement, tCriteria)  // TODO: regexes ?
       case s"b $x" =>
         print(s"Number required, $x passed.")
-        (derivation, false, true, dAdvancement, tCriteria)
+        (derivation, false, true, genDot, genArg, dAdvancement, tCriteria)
       case s"ct $newCriteria" if terminationCriteriaTypesStrings.contains(newCriteria.toLowerCase) =>
         println(s"Termination criteria set to: ${newCriteria.toUpperCase()}")
-        (derivation, false, false, dAdvancement, newCriteria) // implicit conversion
+        (derivation, false, false, genDot, genArg, dAdvancement, newCriteria) // implicit conversion
       case s"ct $newCriteria" if !terminationCriteriaTypesStrings.contains(newCriteria.toLowerCase) =>
         println(s"No termination criteria of type: $newCriteria")
-        (derivation, false, false, dAdvancement, tCriteria)
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case s"ca $newAdvancement" if advancementTypesStrings.contains(newAdvancement.toLowerCase) =>
         println(s"Advancement type set to ${newAdvancement.toUpperCase()}")
-        (derivation, false, false, newAdvancement, tCriteria)
+        (derivation, false, false, genDot, genArg, newAdvancement, tCriteria)
       case s"ct $newAdvancement" if !terminationCriteriaTypesStrings.contains(newAdvancement.toLowerCase) =>
         println(s"No advancement of type: $newAdvancement")
-        (derivation, false, false, dAdvancement, tCriteria)
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case s"$move" if possibleMoveTypesStrings.contains(move.toLowerCase()) =>
-        (derivation :+ possibleMoves(move).random.perform, false, true, dAdvancement, tCriteria) // implicit conversion
+        (derivation :+ possibleMoves(move).random.perform, false, true, genDot, genArg, dAdvancement, tCriteria) // implicit conversion
       case s"$move $x" if possibleMoveTypesStrings.contains(move.toLowerCase) && digitRegex.matches(x) =>
         val movesNo = x.toInt
         val movesOfType = possibleMoves(move) // implicit conversion
         if (movesOfType.size >= movesNo + 1) {
-          (derivation :+ movesOfType(movesNo).perform, false, true, dAdvancement, tCriteria)
+          (derivation :+ movesOfType(movesNo).perform, false, true, genDot, genArg, dAdvancement, tCriteria)
         } else {
           println(s"Wrong index. $move")
-          (derivation, false, false, dAdvancement, tCriteria)
+          (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
         }
       case s"$move" if moveTypesStrings.contains(move.toLowerCase) && !possibleMoveTypesStrings.contains(move.toLowerCase) =>
         println(s"Move $move not currently applicable.")
-        (derivation, false, false, dAdvancement, tCriteria)
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case s"$move $_" if moveTypesStrings.contains(move.toLowerCase) && !possibleMoveTypesStrings.contains(move.toLowerCase) =>
         println(s"Move $move not currently applicable.")
-        (derivation, false, false, dAdvancement, tCriteria)
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
 
       case _ =>
         println("Error")
-        (derivation, false, false, dAdvancement, tCriteria)
+        (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
     }
   }
 
