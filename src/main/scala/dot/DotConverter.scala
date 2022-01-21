@@ -40,17 +40,10 @@ object DotConverter {
   private val oppAttackArrowColor = """ color="red:white:red"  """
 
 
-  def exportDotRepr(gradientFill: Boolean = true, outputFileNameOpt: Option[String] = None)(implicit dState: DisputeState, framework: Framework): String = {
+  def exportDotRepr(gradientFill: Boolean = true, outputFileName: String = "temp_rule.dot")(implicit dState: DisputeState, framework: Framework): Unit = {
     val reprString = getDotString(gradientFill)
 
-    val outputFileName = outputFileNameOpt match {
-      case Some(name) => name
-      case _ => s"dispute_step${dState.id}.dot"
-    }
-
     new PrintWriter(outputFileName) { write(reprString); close() }
-
-    outputFileName
   }
 
   def exportLegend(gradientFill: Boolean = true): String = {

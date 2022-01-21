@@ -2,73 +2,97 @@ package aba.reasoner.argumentBased2
 
 import aba.framework.{Framework, Literal, Rule}
 
+import java.util.UUID
 import scala.annotation.tailrec
 
 
-//import aba.framework.{Literal, Rule}
-//
-//abstract class ArgumentAB2 extends Product with Serializable { }
-//
-//case class SimpleArgumentAB2(literal: Literal) extends ArgumentAB2
-//case class ComplexArgumentAB2(head: Literal, body: Set[ArgumentAB2], rule: Rule) extends ArgumentAB2
+object ArgumentNode {
+  def newUuid: String = UUID.randomUUID().toString.replace('-', '_')
 
-case class ArgumentNode(val data: Literal, val children: Set[ArgumentNode], val parent: Option[ArgumentNode]) {
-  def this(literal: Literal) = {
-    this(literal, Set.empty[ArgumentNode], None)
+  def apply(): ArgumentNode = {
+    new ArgumentNode(Literal("FACT"), Set.empty[ArgumentNode], factNode=true, uuid = newUuid)
   }
+
+  def apply(lit: Literal): ArgumentNode = {
+    new ArgumentNode(lit, Set.empty[ArgumentNode], uuid = newUuid)
+  }
+
+  def apply(lit: Literal, children: Set[ArgumentNode]): ArgumentNode = {
+    new ArgumentNode(lit, children, uuid = newUuid)
+  }
+
+  def apply(copyFrom: ArgumentNode, children: Set[ArgumentNode]): ArgumentNode = {
+    new ArgumentNode(copyFrom.data, children, factNode = copyFrom.factNode, uuid = newUuid)
+  }
+
+}
+
+
+class ArgumentNode(val data: Literal,
+                        val children: Set[ArgumentNode],
+                        val factNode: Boolean = false,
+                        val uuid: String) {
+
+  // TODO: this better, with the UUIDs
+
+
 
   override def toString: String = if (children.isEmpty) s"$data" else s"$data ← [${children.map(_.toString).mkString(",")}]"
 
+  def uid: String = s"arg_node_${data}_$uuid"
+
+  def flattenTree: Seq[ArgumentNode] = {
+   children.map(_.flattenTree).toSeq.flatten :+ this
+  }
+
+  def flattenTreeSet: Set[ArgumentNode] = {
+    children.flatMap(_.flattenTree) + this
+  }
 
 
-  //  def deepCopy(endpoints: Map[ArgumentNode, Set[Rule]], rule: Rule): (ArgumentNode, Map[ArgumentNode, Set[Rule]]) = {
-  //    // only for the top one
-  //
-  //    val newArgumentEndpoints = endpoints.map{
-  //      case (argNode, rules) => argNode -> (Set(rules.toSeq: _*) + rule, rule.body.map(lit => new ArgumentNode(lit)))} // copying the set of rules
-  //
-  //
-  //
-  //
-  //    if (endpoints.contains(this)) {
-  //      val newChidren = rule.body.map(lit => ArgumentNode(lit, Set.empty[ArgumentNode], None))
-  //      val newEndpoints = newChidren.map((_, Set(rule))).toMap
-  //      (ArgumentNode(data, newChidren, None), newEndpoints)
-  //    } else if (endpoints.keySet.intersect(children).nonEmpty) {
-  //      val childrenEndpoints = endpoints.keySet.intersect(children)
-  //
-  //    }
-  //
-  //
-  //
-  //    val childrenCopy = if (children.isEmpty) Set.empty[ArgumentNode]
-  //      else children.map{ case argNode: ArgumentNode => ArgumentNode(argNode.data, argNode.children.map(_.deepCopy()), ) }
-  //
-  //
-  //
-  //
-  //  }
+  def deepCopy1(childrenMap: Map[ArgumentNode, Set[ArgumentNode]], currentEndpoints: Map[ArgumentNode, Set[Rule]]): (ArgumentNode, Map[ArgumentNode, Set[Rule]]) = {  // TODO: if this works, should be renamed from enpointsMap to childrenMap
 
-  // TODO: previously I had
-//  def deepCopy1(endpointsMap: Map[ArgumentNode, (Set[Rule], Set[ArgumentNode])]): ArgumentNode = {
-  def deepCopy1(endpointsMap: Map[ArgumentNode, Set[ArgumentNode]]): ArgumentNode = {  // TODO: if this works, should be renamed from enpointsMap to childrenMap
+    if (this.children.isEmpty && childrenMap.contains(this)) {
+      // this should be for the root only
+      val children = childrenMap(this)
+      val newArgNode = ArgumentNode(this, children)
 
-    if (this.children.isEmpty && endpointsMap.contains(this)) {
-      // this should be for the root only ???
-      val children = endpointsMap(this)
-      ArgumentNode(this.data, children, None)
+      if (currentEndpoints.contains(this)) {
+        val endpointsRules = currentEndpoints(this)
+        val newEndpoints = currentEndpoints - this + (newArgNode -> endpointsRules)
+        (newArgNode, newEndpoints)
+      } else {
+        (newArgNode, currentEndpoints)
+      }
+      //ArgumentNode(this.data, children)
     } else if (this.children.isEmpty) {
-      ArgumentNode(this.data, Set.empty[ArgumentNode], None)
+
+      val newArgNode = ArgumentNode(this, children)
+
+      if (currentEndpoints.contains(this)) {
+        val endpointsRules = currentEndpoints(this)
+        val newEndpoints = currentEndpoints - this + (newArgNode -> endpointsRules)
+        (newArgNode, newEndpoints)
+      } else {
+        (newArgNode, currentEndpoints)
+      }
+      //ArgumentNode(this.data)
     } else {
-      val endpointsSet = endpointsMap.keySet
+      // TODO: zmienic na childrenEndpointsSet
+      val endpointsSet = childrenMap.keySet
+
 
       val nonEndpointsChildren = this.children -- endpointsSet
-//      val endpointsChildren = this.children.intersect(endpointsSet).map(endpointsMap).flatten  //argNode => ArgumentNode(argNode.data, endpointsMap(argNode)._2, None)) // should be exactly one always
-      val endpointsChildren = this.children.intersect(endpointsSet).map(argNode => ArgumentNode(argNode.data, endpointsMap(argNode), None)) //argNode => ArgumentNode(argNode.data, endpointsMap(argNode)._2, None)) // should be exactly one always
+      val endpointsChildren = this.children.intersect(endpointsSet).map(argNode => ArgumentNode(argNode.data, childrenMap(argNode))) //argNode => ArgumentNode(argNode.data, endpointsMap(argNode)._2, None)) // should be exactly one always
+//      val newChildren = nonEndpointsChildren.map(_.deepCopy1(childrenMap)) union endpointsChildren
+      if (nonEndpointsChildren.nonEmpty) {
+        val (newChildren, newEndpoints) = nonEndpointsChildren.map(_.deepCopy1(childrenMap, currentEndpoints)).unzip
+        (ArgumentNode(this.data, newChildren union endpointsChildren), newEndpoints.flatten.toMap)
+      } else {
+        (ArgumentNode(this.data, endpointsChildren), currentEndpoints)
+      }
 
-      val newChildren = nonEndpointsChildren.map(_.deepCopy1(endpointsMap)) union endpointsChildren
 
-      ArgumentNode(this.data, newChildren, None)
     }
   }
 
@@ -87,7 +111,8 @@ case class ArgumentNode(val data: Literal, val children: Set[ArgumentNode], val 
 
       val circularities = endpoints.filter { case (argNode, rules) => rules.exists(_.head == argNode.data) }
       if (circularities.nonEmpty) {
-        (argumentNode, endpoints, true) // todo: notify that circular
+        (argumentNode, circularities, true) // todo: notify that circular
+        // TODO: tutaj jest cos nie tak
       } else {
         // if no circularities
         // check if one can further extend using rules already used in this argument
@@ -99,29 +124,43 @@ case class ArgumentNode(val data: Literal, val children: Set[ArgumentNode], val 
           // there can be many with many rules. Do it one by one
           val endpointLit = expandableEndpoints.head.data
           // there should be EXACTLY 1 rule
+
+          // TODO: tu zapewne brakuje case'a ze regula ma puste body
+
           val ruleToUse = rulesUsedGlobally.filter(_.head == endpointLit).head
-//          val nonAssumptionsBody = ruleToUse.body -- framework.assumptions
           val relevantEndpoints = endpoints.filter(_._1.data == endpointLit)
-          // adding rule to set shuld work fine, because should be defined by Rule
-          val endpointsMap = relevantEndpoints.map { case (argNode, rules) => argNode -> (rules + ruleToUse, ruleToUse.body.map(lit => new ArgumentNode(lit))) }
+          // TODO: to zmienilem
+          val remainingEndpoints = endpoints -- relevantEndpoints.keySet
 
-          // val assumptionChildrenNodes = endpointsMap.map { case (argNode, (rules, endpoints)) => argNode -> endpoints.filter(node => framework.assumptions.contains(node.data)) }
+          // TODO: wazne!!!
+          // TODO: co z remaining endpoints??
+          if (ruleToUse.body.nonEmpty) {
 
-          val nonAssumptionsEndpointsMap = endpointsMap.map { case (argNode, (rules, endpoints)) => argNode -> (rules, endpoints.filter(node => !framework.assumptions.contains(node.data)))  }
-          val flattenedNonAssumptionsEndpointsMap = nonAssumptionsEndpointsMap.filter{ case (argNode, (rules, endpoints)) => endpoints.nonEmpty }
+            // currentEndpoint -> (rulesUsed, newEndpointsSet)
+            val endpointsNewRulesUsedNewEndpointsMap = relevantEndpoints.map { case (argNode, rules) => argNode -> (rules + ruleToUse, ruleToUse.body.map(lit => ArgumentNode(lit))) }
+            // filter out assumptions, so that they are not endpoints
+            val nonAssumptionsEndpointsMap = endpointsNewRulesUsedNewEndpointsMap.map { case (argNode, (rules, endpoints)) => argNode -> (rules, endpoints.filter(node => !framework.assumptions.contains(node.data))) }
+            // remove entries with no endpoints
+            val flattenedNonAssumptionsEndpointsMap = nonAssumptionsEndpointsMap.filter { case (_, (_, endpoints)) => endpoints.nonEmpty }
+
+            // new endpoints. Each of type endpoint: rulesUsed
+            val newEndpoints = flattenedNonAssumptionsEndpointsMap.values.map { case (rules, argNodes) => argNodes.map(argNode => argNode -> rules) }.flatten.toMap // more readable when not flatMap
+
+            // TODO: to tez dodalem
+            val actualNewEndpoints = (remainingEndpoints.toSeq ++ newEndpoints.toSeq).groupBy(_._1).map { case (arguNode, seq) => arguNode -> seq.map(_._2).flatten.toSet }.toMap
 
 
+            // all new children. Map endpoint: new children of endpoint to create a new argument
+            // when creating new argument, copy everything and when encountered argNode replace it with new Argument with the same data but with children
+            val newChildrenMap = endpointsNewRulesUsedNewEndpointsMap.map { case (argNode, set) => (argNode, set._2) }
 
-          val newEndpoints = flattenedNonAssumptionsEndpointsMap.values.map { case (rules, argNodes) => argNodes.map(argNode => argNode -> rules) }.flatten.toMap // more readable when not flatMap
-
-          val childrenMap = endpointsMap.map{ case (argNode, set) => (argNode, set._2) }
-
-
-
-          // TODO: previously i had
-//          val newArgNode = argumentNode.deepCopy1(endpointsMap)
-          val newArgNode = argumentNode.deepCopy1(childrenMap)
-          furtherExtend(newArgNode, newEndpoints)
+            val (newArgNode, newEndpoints2) = argumentNode.deepCopy1(newChildrenMap, actualNewEndpoints) // was newEndpoints
+            furtherExtend(newArgNode, newEndpoints2)
+          } else {
+            val childrenMap = relevantEndpoints.map { case (argNode, _) => argNode -> Set(ArgumentNode()) }
+            val (newArgNode, newEndpoints) = argumentNode.deepCopy1(childrenMap, remainingEndpoints)
+            furtherExtend(newArgNode, newEndpoints)
+          }
         }
 
       }
@@ -133,61 +172,108 @@ case class ArgumentNode(val data: Literal, val children: Set[ArgumentNode], val 
 
   }
 }
+object ArgumentTree {
+  def apply(argumentNode: ArgumentNode): ArgumentTree = {
+    new ArgumentTree(argumentNode, Map(argumentNode -> Set.empty[Rule]), Set.empty[Rule], uuid = newUuid)
+  }
 
-case class ArgumentTree(val root: ArgumentNode,
+  def apply(root: ArgumentNode,
+            endpoints: Map[ArgumentNode, Set[Rule]],
+            rules: Set[Rule],
+            isComplete: Boolean,
+            isCircular: Boolean,
+            circularArgs: Option[Set[ArgumentNode]]): ArgumentTree = {
+    new ArgumentTree(root, endpoints, rules, isComplete=isComplete, isCircular=isCircular, circularArgs=circularArgs, uuid=newUuid)
+  }
+
+  def newUuid: String = UUID.randomUUID().toString.replace('-', '_')
+
+}
+
+
+class ArgumentTree(val root: ArgumentNode,
                    val endpoints: Map[ArgumentNode, Set[Rule]], // pointer to siblings where its located
                    val rulesUsed: Set[Rule],
                    val isComplete: Boolean = false,
-                   val isCircular: Boolean = false) {
+                   val isCircular: Boolean = false,
+                   val circularArgs: Option[Set[ArgumentNode]] = None,
+                   val uuid: String) {
 
-  def this(argumentNode: ArgumentNode) = {
-    this(argumentNode, Map(argumentNode -> Set.empty[Rule]), Set.empty[Rule])
-  }
 
+
+//  override def toString: String = s"${root.toString}\nENDPOINTS:\n${endpoints.map{ case (argNode, rules) => s"${argNode.data}: {${rules.mkString(",")}}" }}\nuid"
   override def toString: String = s"${root.toString}\nENDPOINTS:\n${endpoints.map{ case (argNode, rules) => s"${argNode.data}: {${rules.mkString(",")}}" }}"
 
+//  def uid: String = s"argument_${root.data}_${ if (hashCode() < 0) "an" + Math.abs(hashCode()).toString else "a" + hashCode().toString }"
+  def uid: String = s"argument_${root.data}_$uuid"
+
+
   def dCopy(rule: Rule)(implicit framework: Framework): ArgumentTree = {
-    val relevantEndpoints = this.endpoints.filter(_._1.data == rule.head)
-    val rulesUsedGlobally = rulesUsed + rule
-    // TODO: poprawic: trzeba utworzyc nowe nody dla assumptionow, ale nie moga byc one endpointami
-    val nonAssumptionsRuleBody = rule.body -- framework.assumptions
-    // TODO: this was here before
-    val endpointsMap = relevantEndpoints.map { case (argNode, rules) => argNode -> (rules + rule, rule.body.map(lit => new ArgumentNode(lit)))  }
-    // TODO: previously i had
-    //val endpointsMap2 = endpointsMap.map { case (argNode, (rules, nextEndpointsNodes)) => (argNode, nextEndpointsNodes.map(_.extend(nextEndpointsNodes.map((_, rules)).toMap, rulesUsedGlobally))) }
+    val relevantEndpoints = this.endpoints.filter(_._1.data == rule.head) // take all endpoints with head as current rule
+    val rulesUsedGlobally = rulesUsed + rule // expand set of ALL rules
+    val remainingEndpoints = this.endpoints -- relevantEndpoints.keySet
 
-    val assumptionChildrenNodes = endpointsMap.map { case (argNode, (rules, endpoints)) => argNode -> endpoints.filter(node => framework.assumptions.contains(node.data)) }
+    if (rule.body.nonEmpty) {
+      // if there is body
 
-    val nonAssumptionsEndpointsMap = endpointsMap.map { case (argNode, (rules, endpoints)) => argNode -> (rules, endpoints.filter(node => !framework.assumptions.contains(node.data)))  }
-    val flattenedNonAssumptionsEndpointsMap = nonAssumptionsEndpointsMap.filter{ case (argNode, (rules, endpoints)) => endpoints.nonEmpty }
-
-    // TODO: before we had (annotation)
-//    val endpointsMap2: Map[ArgumentNode, Set[(ArgumentNode, Map[ArgumentNode, Set[Rule]])]] = flattenedNonAssumptionsEndpointsMap.map { case (argNode, (rules, nextEndpointsNodes)) => (argNode, nextEndpointsNodes.map(_.extend(rules, rulesUsedGlobally))) }
-    val endpointsMap2 = flattenedNonAssumptionsEndpointsMap.map { case (argNode, (rules, nextEndpointsNodes)) => (argNode, nextEndpointsNodes.map(_.extend(rules, rulesUsedGlobally))) }
-
-    val endpointsMap3 = endpointsMap2.map { case (argNode, tupleSet) => (argNode, tupleSet.map{ case (arg, tupleMap, isCircular) => (arg, tupleMap)  })}
-
-    // TODO: potem stad dokladnie wziac co jest circular
-    val isCircular = endpointsMap2.values.flatten.exists{ case (arg, tupleMap, isCircular) => isCircular  }
-
-    val childrenMap = endpointsMap2.map{ case (argNode, set) => (argNode, set.map(_._1)) }
-    val childrenWithAssumptionsMap = (childrenMap.toSeq ++ assumptionChildrenNodes.toSeq).groupBy(_._1).map { case (arguNode, seq) => arguNode -> seq.map(_._2).flatten.toSet }.toMap
-
-    val newEndpoints2 = endpointsMap3.values.flatten.map { case (_, actualEndpointsMap) => actualEndpointsMap }.flatten.toMap
-    val isComplete = newEndpoints2.isEmpty
-
-    val newEndpoints = endpointsMap.values.map { case (rules, argNodes) => argNodes.map(argNode => argNode -> rules) }.flatten.toMap // more readable when not flatMap
+      // currentEndpoint -> (rulesUsed, newEndpointsSet)
+      // TODO: tutaj zanim dodam, sprawdzic czy nie bedzie wtedy circular
+      val circularEndpoints = relevantEndpoints.filter{ case (argNode, rules) => rules.exists(_.head == rule.head) }
+      // TODO: circularity does not work
+      // !!!
 
 
-    val actualNewEndpoints = this.endpoints -- relevantEndpoints.keySet
-//    val actualNewEndpoints2 = (actualNewEndpoints.toSeq ++ newEndpoints2.toSeq).toMap
-    // TODO: previously we didnt merge maps very well
-    val actualNewEndpoints2 = (actualNewEndpoints.toSeq ++ newEndpoints2.toSeq).groupBy(_._1).map { case (arguNode, seq) => arguNode -> seq.map(_._2).flatten.toSet }.toMap // TODO: dangerous if two of the same, but should be fine
+      val endpointsNewRulesUsedNewEndpointsMap = relevantEndpoints.map { case (argNode, rules) => argNode -> (rules + rule, rule.body.map(lit => ArgumentNode(lit))) }
 
+      // currendEndpoint -> newChildren that are assumptions
+      val assumptionChildrenNodes = endpointsNewRulesUsedNewEndpointsMap.map { case (argNode, (_, endpoints)) => argNode -> endpoints.filter(node => framework.assumptions.contains(node.data)) }
+      // TODO: filter out empty for clarity
 
-// todo: previously i had
-//    ArgumentTree(root.deepCopy1(endpointsMap), newEndpoints2, rulesUsedGlobally)
-    ArgumentTree(root.deepCopy1(childrenWithAssumptionsMap), actualNewEndpoints2, rulesUsedGlobally, isCircular=isCircular, isComplete=isComplete)
+      // currentEndpoint -> (rulesUsed, newEndpointsWithoutAssumptions)
+      val nonAssumptionsEndpointsMap = endpointsNewRulesUsedNewEndpointsMap.map { case (argNode, (rules, endpoints)) => argNode -> (rules, endpoints.filter(node => !framework.assumptions.contains(node.data))) }
+      // remove those that have ONLY assumptions - leave TRUE endpoints
+      val flattenedNonAssumptionsEndpointsMap = nonAssumptionsEndpointsMap.filter { case (_, (_, endpoints)) => endpoints.nonEmpty }
+
+      // map:
+      // currentEndpoint -> set[tuple(new child, its endpoints, is it circular?)]
+      val endpointsNewChildrenNewEndpointsIsCircularMap = flattenedNonAssumptionsEndpointsMap.map { case (argNode, (rules, nextEndpointsNodes)) => (argNode, nextEndpointsNodes.map(_.extend(rules, rulesUsedGlobally))) }
+
+      // map:
+      // currentEndpoint -> set[tuple(newChild, its endpoints)]
+      val endpointsNewChildrenNewEndpointsMap = endpointsNewChildrenNewEndpointsIsCircularMap.map { case (argNode, tupleSet) => (argNode, tupleSet.map { case (arg, tupleMap, _) => (arg, tupleMap) }) }
+
+      // for circularity
+      // TODO: just an simple solution, but should be corrected - take only those that have no children (are leaves)
+      val circularArgs = endpointsNewChildrenNewEndpointsIsCircularMap.values.flatten.filter { case (arg, tupleMap, isCircular) => isCircular }.map(_._1).filter(_.children.isEmpty)
+      val isCircular = circularArgs.nonEmpty
+      val circularArgsOption = if (isCircular) Some(circularArgs.toSet) else None
+
+      // for new children
+      // map
+      // currentEndpoint -> its children
+      val childrenMap = endpointsNewChildrenNewEndpointsIsCircularMap.map { case (argNode, set) => (argNode, set.map(_._1)) }
+      val childrenWithAssumptionsMap = (childrenMap.toSeq ++ assumptionChildrenNodes.toSeq).groupBy(_._1).map { case (arguNode, seq) => arguNode -> seq.map(_._2).flatten.toSet }.toMap
+
+      // new endpoints
+      val newlyCreatedEndpoints = endpointsNewChildrenNewEndpointsMap.values.flatten.map { case (_, actualEndpointsMap) => actualEndpointsMap }.flatten.toMap
+      // new endpoints together with remaining endpoints
+      val actualNewEndpoints = (remainingEndpoints.toSeq ++ newlyCreatedEndpoints.toSeq).groupBy(_._1).map { case (arguNode, seq) => arguNode -> seq.map(_._2).flatten.toSet }.toMap
+      val isComplete = actualNewEndpoints.isEmpty // TODO: to niech sie po prostu wylicza
+
+      val (newRoot,actualNewEndpoints2) = root.deepCopy1(childrenWithAssumptionsMap, actualNewEndpoints)
+
+      ArgumentTree(newRoot, actualNewEndpoints2, rulesUsedGlobally, isCircular = isCircular, isComplete = isComplete,
+        circularArgs = circularArgsOption)
+    } else {
+      // if empty body
+      val childrenMap = relevantEndpoints.map { case (argNode, _) => argNode -> Set(ArgumentNode()) }
+      val isComplete = remainingEndpoints.isEmpty
+
+      val (newRoot, newEndpoints) = root.deepCopy1(childrenMap, remainingEndpoints)
+      ArgumentTree(newRoot, newEndpoints, rulesUsedGlobally, isComplete = isComplete, isCircular=false, circularArgs=None)
+
+    }
+
   }
 
 }
