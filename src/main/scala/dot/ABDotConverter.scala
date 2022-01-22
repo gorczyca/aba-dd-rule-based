@@ -130,28 +130,29 @@ object ABDotConverter {
       case _ => false
     })
 
+    val statementColor = if (isProp) proponentColor else opponentColor
 
 
     // TODO: some function should do it
-    val assumptionsNodes = assumptions.map(argNode => s"""${argNode.uid} [label="${getLabel(argNode)}" shape="$assumptionShape"];""")
-    val factNodes = facts.map(argNode => s"""${argNode.uid} [label="", shape="$factShape", width="0.15", height="0.15"];""")
-    val multipleBodyNodes = getMultipleBodyNode(argumentTree.root).map(uid => s"""$uid [label="", shape="$multipleBodyShape", width=0.15];""")
-    val circularNodes = circularArgs.map(argNode => s"""${argNode.uid} [label=\"${getLabel(argNode)}\", color="${circularColor}"];""")
-    val goalNodes = goal.map(argNode => s"""${argNode.uid} [label=\"${getLabel(argNode)}\", shape="${if (isProp) proponentGoalShape else opponentGoalShape}"];""") // should be exactly one
-    val normalStatements = nonCircularArgs.map(argNode => s"""${argNode.uid} [label="${getLabel(argNode)}"];""")
+    val assumptionsNodes = assumptions.map(argNode => s"""${argNode.uid} [label="${getLabel(argNode)}", shape="$assumptionShape", fillcolor="white:$statementColor"];""")
+    val factNodes = facts.map(argNode => s"""${argNode.uid} [label="", shape="$factShape", width="0.15", height="0.15", fillcolor="white:$statementColor"];""")
+    val multipleBodyNodes = getMultipleBodyNode(argumentTree.root).map(uid => s"""$uid [label="", shape="$multipleBodyShape", width=0.15, fillcolor="white:$statementColor"];""")
+    val circularNodes = circularArgs.map(argNode => s"""${argNode.uid} [label="${getLabel(argNode)}", fillcolor="white:$circularColor"];""")
+    val goalNodes = goal.map(argNode => s"""${argNode.uid} [label="${getLabel(argNode)}", shape="${if (isProp) proponentGoalShape else opponentGoalShape}", fillcolor="white:$statementColor"]; """) // should be exactly one
+    val normalStatements = nonCircularArgs.map(argNode => s"""${argNode.uid} [label="${getLabel(argNode)}", fillcolor="white:$statementColor"];""")
 
     val (clusterColor, labelInfo) = if (argumentTree.isCircular) (circularArgColor, "circular") else if (argumentTree.isComplete) (completeArgColor, "complete") else (incompleteArgColor, "incomplete")
-    val statementColor = if (isProp) proponentColor else opponentColor
     val label = s"${argumentTree.root.data} ($labelInfo)"
 
     s"""subgraph cluster_${argumentTree.uid} {
        |\tstyle="filled";
-       |\tcolor="$clusterColor";
+       |\tcolor="black";
+       |\tfillcolor="$clusterColor";
        |\tlabel="$label";
-       |\tfontname="times-bold";
+       |\tfontname="times-italic";
        |\tfontsize="30";
        |\t// node defaults
-       |\tnode [color="$statementColor" ]
+       |\tnode [color="black" ];
        |\t// edges
        |\t${getArgsEdgesRec(argumentTree.root).mkString("\n\t")}
        |\n
