@@ -166,6 +166,3 @@ rule(xHandlebarDropped,[handlebarElevated]).
 goal(xWheelsWide).
 
 
-% LOOP e.g.: handlebar-straight :- handlebar-flat ;       handlebar-flat :- handlebar-straight
-
-
