@@ -76,7 +76,9 @@ object Main {
 
         val chosenStrategyString = "// "+  automaticReasoner.settingsToString.mkString("\n// ")
 
-        val (info, filename) = automaticReasoner.getNewIncompleteSuccessfulDSAndStackRec(initialDSs, List.empty)(framework, onlyOne = true, Some(60), tCriteria, dAdvancement) match {
+        val timeOut = if (i == 17) Some(9999) else Some(0)
+
+        val (info, filename) = automaticReasoner.getNewIncompleteSuccessfulDSAndStackRec(initialDSs, List.empty)(framework, onlyOne = true, timeOut, tCriteria, dAdvancement) match {
           case (_, _, true, duration) =>
             println(s"$i: Timeout")
             (s"// Timeout reached (computation time $duration)", s"timeout_$i.txt")

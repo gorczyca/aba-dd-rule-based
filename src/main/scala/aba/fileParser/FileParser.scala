@@ -49,7 +49,13 @@ abstract class FileParser extends RegexParsers{
         val goals = parsedObjects.collect{ case g: PGoal => g.lit }
         val constraints = parsedObjects.collect{ case c: PConstraint => c.lit }
 
-        new Framework(rules, assumptions, contraries, goals, constraints, alphabet.toMap)
+        // TODO: from here I started optimizing
+        val actualAssumptions = assumptions.map(_.id)
+        val actualGoals = goals.map(_.id)
+        val actualConstraints = constraints.map(_.id)
+
+
+        new Framework(rules, actualAssumptions, contraries, actualGoals, actualConstraints, alphabet.keys.toSet)
 
       }
     }

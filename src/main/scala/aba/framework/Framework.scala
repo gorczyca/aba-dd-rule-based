@@ -15,46 +15,53 @@ object Framework {
 // TODO: keep here the file path
 
 class Framework (val rules: Set[Rule],
-                 val assumptions: Set[Literal],
+                 val assumptions: Set[String],
                  val contraries: Set[Contrary],
-                 val goals: Set[Literal],
-                 val constraints: Set[Literal],
-                 val alphabet: Map[String, Literal]
+                 val goals: Set[String],
+                 val constraints: Set[String],
+                 val alphabet: Set[String]
                 ) {
   def initialDState: DisputeState = DisputeState(goals)
 
   // helpers
-  def contrariesOf(literal: Literal): Set[Literal] = contraries.filter(_.assumption == literal).collect(_.contrary)
+  def contrariesOf(statement: String): Set[String] = contraries.filter(_.assumption == statement).map(_.contrary)
 
-  def contrariesOf(literals: Set[Literal]): Set[Literal] = contraries.filter(ctr => literals.contains(ctr.assumption)).collect(_.contrary)
+  def contrariesOf(statements: Set[String]): Set[String] = statements.map(contrariesOf)
 
 
-  /// implicits
+  // implicits
+  @deprecated
   implicit class ArgumentsSetWrapper(val set: Set[Argument]) {
+    @deprecated
     def litArgs: Set[LiteralArgument] = set.collect { case litArg: LiteralArgument => litArg }
+    @deprecated
     def ruleArgs: Set[RuleArgument] = set.collect { case ruleArg: RuleArgument => ruleArg }
   }
 
 
-  // end of implicits
 
-
+  @deprecated
   def bRuleArgs(implicit dState: DisputeState): Set[RuleArgument] = dState.bRuleArgs
 
+  @deprecated
   def bLitArgs(implicit dState: DisputeState): Set[LiteralArgument] = dState.bLitArgs
 
+  @deprecated
   def pRuleArgs(implicit dState: DisputeState): Set[RuleArgument] = dState.pRuleArgs
 
+  @deprecated
   def pLitArgs(implicit dState: DisputeState): Set[LiteralArgument] = dState.pLitArgs
 
 
   // Paper specific
 
   // TODO: make dStates implicit?
+  @deprecated
   def defences(implicit dState: DisputeState): Set[Literal] = {
     pLitArgs.map(_.lit).intersect(assumptions)
   }
 
+  @deprecated
   def culprits(implicit dState: DisputeState): Set[Literal] = {
     contraries.filter(ctr => pLitArgs.map(_.lit).contains(ctr.contrary)).map(_.assumption)
   }
