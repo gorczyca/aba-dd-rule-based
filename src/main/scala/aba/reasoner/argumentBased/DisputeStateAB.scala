@@ -7,6 +7,8 @@ import aba.reasoner.{Argument, DisputeState, LiteralArgument, RuleArgument}
 import scala.annotation.tailrec
 
 
+ // TODO: remove
+
 object DisputeStateAB_ {
   def apply(derivation: List[DisputeState])(implicit framework: Framework): DisputeStateAB = {
 

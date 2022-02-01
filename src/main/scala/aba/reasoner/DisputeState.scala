@@ -19,7 +19,6 @@ object DisputeState {
 
 }
 
-
 case class DisputeState(id: Int,
                         move: Option[MoveType],
                         p: Set[Argument],
