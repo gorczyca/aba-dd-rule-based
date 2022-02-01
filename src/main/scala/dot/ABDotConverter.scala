@@ -26,14 +26,14 @@ object ABDotConverter {
   private val factShape = "star"
   private val multipleBodyShape = "circle"
 
-  def exportDotRepr(proponentArgs: Set[ArgumentTree], opponentArgs: Set[ArgumentTree], outputName: String)(implicit dState: DisputeState, framework: Framework): String = {
-    val reprString = getDotString(proponentArgs, opponentArgs)
+  def exportDotRepr(proponentArgs: Set[ArgumentTree], opponentArgs: Set[ArgumentTree], outputName: String, additionalInformation: String)(implicit dState: DisputeState, framework: Framework): String = {
+    val reprString = getDotString(proponentArgs, opponentArgs, additionalInformation)
     new PrintWriter(outputName) { write(reprString); close() }
 
     outputName
   }
 
-  private def getDotString(proponentArgs: Set[ArgumentTree], opponentArgs: Set[ArgumentTree])(implicit dState: DisputeState, framework: Framework): String = {
+  private def getDotString(proponentArgs: Set[ArgumentTree], opponentArgs: Set[ArgumentTree], additionalInformation: String)(implicit dState: DisputeState, framework: Framework): String = {
 
     val propArgs = proponentArgs.map(argTree => getArgSubgraph(argTree, isProp = true))
     val oppArgs = opponentArgs.map(argTree => getArgSubgraph(argTree, isProp = false))
@@ -49,7 +49,10 @@ object ABDotConverter {
     })
 
     s"""
+       |${additionalInformation}
+       |
        |digraph DisputeStateStep${dState.id} {\n
+       |
        |\t // global defaults
        |\t 	node [ fontname="times-bold", color="black", style="filled", fontsize="20", margin="0.1,0.0", shape="rectangle"]
        |\n

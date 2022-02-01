@@ -1,15 +1,17 @@
 import scala.language.implicitConversions
 import aba.framework.Framework
-import aba.move.DisputeAdvancement.{DAB, DF, DisputeAdvancementType}
+import aba.move.DisputeAdvancement.{DAB, DisputeAdvancementType}
 import aba.move.{DisputeAdvancement, Move, TerminationCriteria}
 import aba.move.Move.MoveType
 import aba.move.TerminationCriteria.{TA, TerminationCriteriaType}
 import aba.reasoner.argumentBased.DisputeStateAB_
-import aba.reasoner.argumentBased2.DisputeStateAB2
+import aba.reasoner.argumentBased2.{ArgumentTree, DisputeStateAB2}
+import aba.reasoner.automatic.{AssumptionChoice, AttackPreference, AutomaticReasoner, DisputeStateAuto, OpponentsAttackStrategy, RuleChoice, StatementChoice, TurnChoice}
 import aba.reasoner.{DisputeState, PotentialMove}
 import commandLineParser.CommandLineParser
 import dot.{ABDotConverter, DotConverter}
 
+import java.io.PrintWriter
 import scala.annotation.tailrec
 
 object Main {
@@ -29,6 +31,68 @@ object Main {
       case _ =>
     }
 
+  }
+
+  // find one for each strategy
+  def findAll(dAdvancement: DisputeAdvancementType,
+              tCriteria: TerminationCriteriaType,
+              dfs: Boolean)(implicit framework: Framework,
+                            possibleMoves: Map[MoveType, Seq[PotentialMove]],
+                            lastState: DisputeState): Unit = {
+
+    val folderName = "auto_find_one_by_all"
+
+    var i = 1
+    for { turnChoice <- TurnChoice.values
+      pStatementChoice <- StatementChoice.values
+      oStatementChoice <- StatementChoice.values
+      oppAttackStrategy = OpponentsAttackStrategy.OneAtATime
+      pAttackPreference <- AttackPreference.values
+      oAttackPreference <- AttackPreference.values
+      pRuleChoice <- RuleChoice.values
+      oRuleChoice <- RuleChoice.values
+      pAssumptionChoice <- AssumptionChoice.values
+      oAssumptionChoice <- AssumptionChoice.values
+    } {
+
+
+        implicit val automaticReasoner: AutomaticReasoner = new AutomaticReasoner(
+          turnChoice = turnChoice,
+          pStatementChoice = pStatementChoice,
+          oStatementChoice = oStatementChoice,
+          opponentsAttackStrategy = OpponentsAttackStrategy.OneAtATime,
+          pAttackPreference = pAttackPreference,
+          oAttackPreference = oAttackPreference,
+          pRuleChoice = pRuleChoice,
+          oRuleChoice = oRuleChoice,
+          pAssumptionChoice = pAssumptionChoice,
+          oAssumptionChoice = oAssumptionChoice,
+          dfs = dfs
+        )
+
+
+        val initialDStateAuto = new DisputeStateAuto(lastState, Set.empty, List.empty)
+        val initialDSs = List(initialDStateAuto)
+
+        val chosenStrategyString = "// "+  automaticReasoner.settingsToString.mkString("\n// ")
+
+        val (info, filename) = automaticReasoner.getNewIncompleteSuccessfulDSAndStackRec(initialDSs, List.empty)(framework, onlyOne = true, Some(60), tCriteria, dAdvancement) match {
+          case (_, _, true, duration) =>
+            println(s"$i: Timeout")
+            (s"// Timeout reached (computation time $duration)", s"timeout_$i.txt")
+          case (Nil, Nil, _, duration) =>
+            println(s"$i: Not found")
+            (s"// No successful derivations found (computation time $duration)", s"not_found_$i.txt")
+          case (_, successfulHead :: _, _, duration) =>
+            println(s"$i: Success")
+            (s"// Successful derivation found (computation time $duration).\n// " +
+            successfulHead.performedMovesToString.mkString("\n// "), s"success_$i.txt")
+        }
+
+      new PrintWriter(s"$folderName/$filename") { write(chosenStrategyString + "\n" + info); close() }
+
+      i += 1
+    }
   }
 
   @tailrec
@@ -61,15 +125,74 @@ object Main {
     else newDerivation
   }
 
-  private def generateABRepresentation(showCircular: Boolean=false, showIncomplete: Boolean=true, outputName: String = "temp_arg.dot")(implicit dState: DisputeState, framework: Framework): String = {
+  private def generateABRepresentation(showCircular: Boolean=true, showIncomplete: Boolean=true, outputName: String = "temp_arg.dot", additionalInformation: String = "")(implicit dState: DisputeState, framework: Framework): String = {
     val actualPropGoals = framework.goals union framework.contrariesOf(framework.culprits)
-    val propArgs = DisputeStateAB2.create_arguments(actualPropGoals, dState.pRuleArgs.map(_.rule))
+
+    def filterArgs: ArgumentTree => Boolean = arg => (showCircular, showIncomplete) match {
+      case (true, true) => true
+      case (true, false) => arg.isComplete
+      case (false, true) => !arg.isCircular
+      case (false, false) => !arg.isCircular && arg.isComplete
+    }
+
+    val propArgs = DisputeStateAB2.create_arguments(actualPropGoals, dState.pRuleArgs.map(_.rule)).filter(filterArgs)
 
     val opponentGoals = framework.contrariesOf(framework.defences) intersect dState.bLitArgs.map(_.lit) // those that actually have been uttered
-    val oppArgs = DisputeStateAB2.create_arguments(opponentGoals, dState.bRuleArgs.map(_.rule))
-    ABDotConverter.exportDotRepr(propArgs, oppArgs, outputName)
+    val oppArgs = DisputeStateAB2.create_arguments(opponentGoals, dState.bRuleArgs.map(_.rule)).filter(filterArgs)
+    ABDotConverter.exportDotRepr(propArgs, oppArgs, outputName, additionalInformation)
 
     outputName
+  }
+
+  private def findSuccessfulDerivations(
+                                  dAdvancement: DisputeAdvancementType,
+                                  tCriteria: TerminationCriteriaType,
+                                  dfs: Boolean)(implicit framework: Framework,
+                                                //automaticReasoner: AutomaticReasoner,
+                                                possibleMoves: Map[MoveType, Seq[PotentialMove]],
+                                                lastState: DisputeState): DisputeState = {
+
+    println("Finding a successful derication. This can take a moment...")
+
+    implicit val automaticReasoner: AutomaticReasoner = new AutomaticReasoner(
+      turnChoice = TurnChoice.Proponent,
+      pStatementChoice = StatementChoice.Eager,
+      oStatementChoice = StatementChoice.Eager,
+      opponentsAttackStrategy = OpponentsAttackStrategy.OneAtATime,
+      pAttackPreference = AttackPreference.PreferRuleAttack,
+      oAttackPreference = AttackPreference.PreferRuleAttack,
+      pRuleChoice = RuleChoice.NewlyIntroducedAssumptionsMax,
+      oRuleChoice = RuleChoice.NewlyIntroducedAssumptionsMin,
+      pAssumptionChoice = AssumptionChoice.MostContraries,
+      oAssumptionChoice = AssumptionChoice.MostContraries,
+      dfs = dfs
+    )
+
+    val initialDStateAuto = new DisputeStateAuto(lastState, Set.empty, List.empty)
+    val initialDSs = List(initialDStateAuto)
+
+    @tailrec
+    def findSuccessfulDerivationsRec(stack: List[DisputeStateAuto]): DisputeState = {
+
+      automaticReasoner.getNewIncompleteSuccessfulDSAndStackRec(stack, List.empty)(framework, onlyOne = true, None, tCriteria, dAdvancement) match {
+        case (_, _, true, _) =>
+          println("Timeout reached")
+          lastState
+        case (Nil, Nil, _, _) =>
+          println("No successful derivations found")
+          lastState
+        case (restDS, successfulHead :: _, _, duration) =>
+          println(s"Successful derivation found in $duration.")
+          println(successfulHead.performedMovesToString.mkString("\n"))
+          println("Press ENTER to finish, ; to find another one")
+          Console.in.readLine match {
+            case ";" => findSuccessfulDerivationsRec(restDS)
+            case _ => successfulHead.dState
+          }
+      }
+    }
+
+    findSuccessfulDerivationsRec(initialDSs)
   }
 
   def progressDerivation(derivation: List[DisputeState],
@@ -98,6 +221,18 @@ object Main {
     val possibleMoveTypesStrings = possibleMoves.keys.map(_.toString.toLowerCase()).toSet
 
     Console.in.readLine match {
+      case "auto dfs all" =>
+        findAll(dAdvancement, tCriteria, dfs=true)
+        (derivation, false,  false, genDot, genArg, dAdvancement, tCriteria)
+      case s"auto dfs" =>
+        val newDerivation = findSuccessfulDerivations(dAdvancement, tCriteria, dfs=true)
+        // TODO: now you cannot backtrack from here
+        (derivation :+ newDerivation, false,  false, genDot, genArg, dAdvancement, tCriteria)
+      case s"auto bfs" =>
+        val newDerivation = findSuccessfulDerivations(dAdvancement, tCriteria, dfs=false)
+        // TODO: same as above. It is possible to convert the new derivation AUTO to a list of dispute states, do that
+        //  OR do not keep the lists of Dstates but generate them from the sequence of moves
+        (derivation :+ newDerivation, false,  false, genDot, genArg, dAdvancement, tCriteria)
       case "arg" =>
         val fileName = s"arg_dot_repr_step${lastState.id}.dot"
         generateABRepresentation(outputName = fileName)

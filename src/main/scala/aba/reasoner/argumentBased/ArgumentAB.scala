@@ -2,6 +2,8 @@ package aba.reasoner.argumentBased
 
 import aba.framework.{Framework, Literal, Rule}
 
+// TODO: remove
+
 // Argument (argument based approach)
 abstract class ArgumentAB extends Product with Serializable {
   def consequence: Literal

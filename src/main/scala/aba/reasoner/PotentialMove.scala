@@ -3,6 +3,8 @@ package aba.reasoner
 import aba.move.Move.MoveType
 
 
+// TODO Here also sealed trait
+// TODO and cased clases ruleArg and assumptionArg
 case class PotentialMove(ruleArgument: Option[RuleArgument],
                          // literalArgument: Option[LiteralArgument],
                          assumptionArgument: Option[LiteralArgument],

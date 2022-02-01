@@ -9,6 +9,7 @@ import scala.math.Ordering.Implicits.seqOrdering
 
 // Companion object, holding all static things
 object Move extends Enumeration {
+  // TODO: consider changing Enumeration to sealed trait
   type MoveType = Value
   val
     PB1,
@@ -45,6 +46,9 @@ object Move extends Enumeration {
 
     def isForwardMove: Boolean = !isBackwardMove
     def isBackwardMove: Boolean = moveType.toString()(1) == 'B'
+
+    def isRuleMove: Boolean = Set(OB1, OB2, OF1, PB1, PB2, PF1).contains(moveType)
+    def isAssumptionMove: Boolean = !isRuleMove
   }
 
   def possibleMovesToString(possibleMoves: Map[MoveType, Seq[PotentialMove]]): String = {
