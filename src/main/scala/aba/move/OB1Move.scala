@@ -7,7 +7,8 @@ object OB1Move extends Move {
   override def isPossible(set: Set[Literal])(implicit framework: Framework, dState: DisputeState): Seq[PotentialMove] = {
 
     val union = framework.contrariesOf(framework.defences) union set
-    val unblockedPiecesSupportingDefContrariesLit = framework.unblockedPiecesSupportingStatements(union).collect { case litArg: LiteralArgument => litArg.lit }
+    val unblockedPiecesSupportingDefContrariesLit = framework.
+      unblockedPiecesSupportingStatements(union).collect { case litArg: LiteralArgument => litArg.lit }
                                                                                                   // rule argument can only have children that are litArgs, hence no need to map
     framework.remainingNonBlockedBRules.filter(rule => unblockedPiecesSupportingDefContrariesLit.contains(rule.head))
       .map(RuleArgument)

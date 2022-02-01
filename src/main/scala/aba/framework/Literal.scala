@@ -1,5 +1,6 @@
 package aba.framework
 
+@deprecated
 case class Literal(id: String) {
   override def toString: String = id
 
