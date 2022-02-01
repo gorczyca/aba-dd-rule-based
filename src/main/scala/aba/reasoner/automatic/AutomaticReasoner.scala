@@ -3,7 +3,7 @@ package aba.reasoner.automatic
 import aba.framework.{Framework, Literal, Rule}
 import aba.move.{DisputeAdvancement, TerminationCriteria}
 import aba.move.DisputeAdvancement.DisputeAdvancementType
-import aba.move.Move.{MoveType, OB1, OB2, OF1, OF2, PB1, PB2, PF2}
+import aba.move.Move.{MoveType, OB1, OB2, OF1, OF2, PB1, PB2, PF2, PF1}
 import aba.move.TerminationCriteria.{TerminationCriteriaType, checkIfOver}
 import aba.reasoner.automatic.AttackPreference.AttackPreferenceType
 import aba.reasoner.automatic.OpponentsAttackStrategy.OpponentsAttackStrategyType
@@ -200,7 +200,7 @@ class AutomaticReasoner(val turnChoice: TurnChoiceType,
 
     implicit val dState: DisputeState = dStateAuto.dState
 
-    val pMovesTypes = Seq(PB1, OB2, OF2) // move types that belong to the proponent's turn
+    val pMovesTypes = Seq(PB1, OB2, OF2, PF1) // move types that belong to the proponent's turn
 
     //val moves = possibleMoves.partition { case (moveType, _) => pMovesTypes.contains(moveType) }
     val (pMoves, oMoves) = possibleMoves.partition { case (moveType, _) => pMovesTypes.contains(moveType) }
@@ -220,7 +220,7 @@ class AutomaticReasoner(val turnChoice: TurnChoiceType,
             framework.contraries.filter(_.contrary == ruleArg.rule.head).map(_.assumption) intersect framework.defences
           assumptionsToAttack.map(ass => (ass, moveType, potentialMove)).toList
 
-        case PotentialMove(None, Some(assumptionArg), OF2, _, _) =>
+        case PotentialMove(None, Some(assumptionArg), _, OF2, _) =>
           val assumptionsToAttack =
             framework.contraries.filter(_.contrary == assumptionArg.lit).map(_.assumption) intersect framework.defences
           assumptionsToAttack.map(ass => (ass, moveType, potentialMove)).toList
@@ -235,7 +235,7 @@ class AutomaticReasoner(val turnChoice: TurnChoiceType,
               (culpritCandidates diff dStateAuto.ignoredAssumptions)  // Ignored assumptions by proponent: he willnot attack those
           assumptionsToAttack.map(ass => (ass, moveType, potentialMove)).toList
 
-        case PotentialMove(None, Some(assumptionArg), PF2, _, _) =>
+        case PotentialMove(None, Some(assumptionArg), _, PF2, _) =>
           val assumptionsToAttack =
             framework.contraries.filter(_.contrary == assumptionArg.lit).map(_.assumption) intersect
               (culpritCandidates diff dStateAuto.ignoredAssumptions)
@@ -311,8 +311,7 @@ class AutomaticReasoner(val turnChoice: TurnChoiceType,
 
     val itInc = it + 1
     val itOp = Some(itInc)
-
-    println(s"Iteration: $itInc")
+    //println(s"Iteration: $itInc")
 
 
     val sTime = startTime match {
