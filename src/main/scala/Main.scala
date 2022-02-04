@@ -6,7 +6,7 @@ import aba.move.Move.MoveType
 import aba.move.TerminationCriteria.{TA, TerminationCriteriaType}
 import aba.reasoner.argumentBased.DisputeStateAB_
 import aba.reasoner.argumentBased2.{ArgumentTree, DisputeStateAB2}
-import aba.reasoner.automatic.{AssumptionChoice, AttackPreference, AutomaticReasoner, DisputeStateAuto, OpponentsAttackStrategy, RuleChoice, StatementChoice, TurnChoice}
+import aba.reasoner.automatic.{AssumptionChoice, AttackPreference, AutoPreferenceReasoner, AutomaticReasoner, DisputeStateAuto, OpponentsAttackStrategy, RuleChoice, StatementChoice, TurnChoice}
 import aba.reasoner.{DisputeState, PotentialMove}
 import commandLineParser.CommandLineParser
 import dot.{ABDotConverter, DotConverter}
@@ -71,12 +71,12 @@ object Main {
         )
 
 
-        val initialDStateAuto = new DisputeStateAuto(lastState, Set.empty, List.empty)
+        val initialDStateAuto = new DisputeStateAuto(lastState, Set.empty, Set.empty, Nil)
         val initialDSs = List(initialDStateAuto)
 
         val chosenStrategyString = "// "+  automaticReasoner.settingsToString.mkString("\n// ")
 
-        val (info, filename) = automaticReasoner.getNewIncompleteSuccessfulDSAndStackRec(initialDSs, List.empty)(framework, onlyOne = true, Some(60), tCriteria, dAdvancement) match {
+        val (info, filename) = automaticReasoner.getNewIncompleteSuccessfulDSAndStackRec(initialDSs, Nil)(framework, onlyOne = true, Some(60), tCriteria, dAdvancement) match {
           case (_, _, true, duration) =>
             println(s"$i: Timeout")
             (s"// Timeout reached (computation time $duration)", s"timeout_$i.txt")
@@ -152,7 +152,7 @@ object Main {
                                                 possibleMoves: Map[MoveType, Seq[PotentialMove]],
                                                 lastState: DisputeState): DisputeState = {
 
-    println("Finding a successful derication. This can take a moment...")
+    println("Finding a successful derivation. This can take a moment...")
 
     implicit val automaticReasoner: AutomaticReasoner = new AutomaticReasoner(
       turnChoice = TurnChoice.Proponent,
@@ -161,20 +161,20 @@ object Main {
       opponentsAttackStrategy = OpponentsAttackStrategy.OneAtATime,
       pAttackPreference = AttackPreference.PreferRuleAttack,
       oAttackPreference = AttackPreference.PreferRuleAttack,
-      pRuleChoice = RuleChoice.NewlyIntroducedAssumptionsMax,
+      pRuleChoice = RuleChoice.NewlyIntroducedAssumptionsMin,
       oRuleChoice = RuleChoice.NewlyIntroducedAssumptionsMin,
       pAssumptionChoice = AssumptionChoice.MostContraries,
       oAssumptionChoice = AssumptionChoice.MostContraries,
       dfs = dfs
     )
 
-    val initialDStateAuto = new DisputeStateAuto(lastState, Set.empty, List.empty)
+    val initialDStateAuto = new DisputeStateAuto(lastState, Set.empty, Set.empty, Nil)
     val initialDSs = List(initialDStateAuto)
 
     @tailrec
     def findSuccessfulDerivationsRec(stack: List[DisputeStateAuto]): DisputeState = {
 
-      automaticReasoner.getNewIncompleteSuccessfulDSAndStackRec(stack, List.empty)(framework, onlyOne = true, None, tCriteria, dAdvancement) match {
+      automaticReasoner.getNewIncompleteSuccessfulDSAndStackRec(stack, Nil)(framework, onlyOne = true, None, tCriteria, dAdvancement) match {
         case (_, _, true, _) =>
           println("Timeout reached")
           lastState
@@ -194,6 +194,47 @@ object Main {
 
     findSuccessfulDerivationsRec(initialDSs)
   }
+
+
+  private def findSuccessfulDerivationsPref(dAdvancement: DisputeAdvancementType,
+                                         tCriteria: TerminationCriteriaType,
+                                         dfs: Boolean)(implicit framework: Framework,
+                                                       //automaticReasoner: AutomaticReasoner,
+                                                       possibleMoves: Map[MoveType, Seq[PotentialMove]],
+                                                       lastState: DisputeState): DisputeState = {
+
+    println("Finding a successful derivation. This can take a moment...")
+
+    implicit val automaticReasoner: AutoPreferenceReasoner = new AutoPreferenceReasoner(dfs)
+
+
+    val initialDStateAuto = new DisputeStateAuto(lastState, Set.empty, Set.empty, Nil)
+    val initialDSs = List(initialDStateAuto)
+
+    @tailrec
+    def findSuccessfulDerivationsRec(stack: List[DisputeStateAuto]): DisputeState = {
+
+      automaticReasoner.getNewIncompleteSuccessfulDSAndStackRec(stack, Nil)(framework, onlyOne = true, None, tCriteria, dAdvancement) match {
+        case (_, _, true, _) =>
+          println("Timeout reached")
+          lastState
+        case (Nil, Nil, _, _) =>
+          println("No successful derivations found")
+          lastState
+        case (restDS, successfulHead :: _, _, duration) =>
+          println(s"Successful derivation found in $duration.")
+          println(successfulHead.performedMovesToString.mkString("\n"))
+          println("Press ENTER to finish, ; to find another one")
+          Console.in.readLine match {
+            case ";" => findSuccessfulDerivationsRec(restDS)
+            case _ => successfulHead.dState
+          }
+      }
+    }
+
+    findSuccessfulDerivationsRec(initialDSs)
+  }
+
 
   def progressDerivation(derivation: List[DisputeState],
                          genDot: Boolean,
@@ -224,6 +265,14 @@ object Main {
       case "auto dfs all" =>
         findAll(dAdvancement, tCriteria, dfs=true)
         (derivation, false,  false, genDot, genArg, dAdvancement, tCriteria)
+      case s"auto1 dfs" =>
+        val newDerivation = findSuccessfulDerivationsPref(dAdvancement, tCriteria, dfs=true)
+        // TODO: now you cannot backtrack from here
+        (derivation :+ newDerivation, false,  false, genDot, genArg, dAdvancement, tCriteria)
+      case s"auto1 bfs" =>
+        val newDerivation = findSuccessfulDerivationsPref(dAdvancement, tCriteria, dfs=false)
+        // TODO: now you cannot backtrack from here
+        (derivation :+ newDerivation, false,  false, genDot, genArg, dAdvancement, tCriteria)
       case s"auto dfs" =>
         val newDerivation = findSuccessfulDerivations(dAdvancement, tCriteria, dfs=true)
         // TODO: now you cannot backtrack from here

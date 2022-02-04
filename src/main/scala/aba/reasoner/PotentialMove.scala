@@ -1,5 +1,6 @@
 package aba.reasoner
 
+import aba.framework.Literal
 import aba.move.Move.MoveType
 
 
@@ -10,7 +11,8 @@ case class PotentialMove(ruleArgument: Option[RuleArgument],
                          assumptionArgument: Option[LiteralArgument],
                          literalArguments: Set[LiteralArgument],
                          moveType: MoveType,
-                         additionalInfo: Option[String]) extends Ordered[PotentialMove] {
+                         additionalInfo: Option[String],
+                         attacking: Option[Set[Literal]] = None) extends Ordered[PotentialMove] {
   override def compare(that: PotentialMove): Int = this.moveType compare that.moveType
 
   def perform(implicit dState: DisputeState): DisputeState = {
@@ -49,12 +51,18 @@ case class PotentialMove(ruleArgument: Option[RuleArgument],
 
     //s"$moveType$additionalInfoStr: $ruleArgStr $litArgStr"
 
-    (ruleArgument, assumptionArgument) match {
+    val info1 = (ruleArgument, assumptionArgument) match {
       case (Some(_), Some(_)) => throw new IllegalArgumentException("Potential argument must either be literal or rule based.")
       case (Some(ruleArg), None) => s"Rule: $ruleArg"
       case (None, Some(litArg)) => s"Assumption: $litArg"
       case _ => throw new IllegalArgumentException("Potential argument must either be literal or rule based.")
     }
+    val info2 = attacking match {
+      case Some(asm: Set[Literal]) => s"""Attacking { ${asm.mkString(",")} }"""
+      case _ => ""
+    }
+
+    info1 + "\t\t" +  info2
 
   }
 
