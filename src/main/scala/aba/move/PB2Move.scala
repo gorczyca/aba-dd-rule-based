@@ -11,6 +11,7 @@ object PB2Move extends Move {
     val union = framework.contrariesOf(framework.culpritsCandidates) union set
     val possibleRuleHeads = union -- setDiff
 
+
     framework.remainingNonBlockedPRules.filter(rule => possibleRuleHeads.contains(rule.head))
       .map(RuleArgument)
       .diff(dState.pRuleArgs) // prevent from repeating
@@ -21,7 +22,10 @@ object PB2Move extends Move {
           None,
           ruleArg.rule.body.map(LiteralArgument) + LiteralArgument(ruleArg.rule.head),
           Move.PB2,
-          None)
-      )
+          None,
+          // TODO: temporary
+          if (framework.culpritsCandidates.exists(c => framework.contrariesOf(c).contains(ruleArg.rule.head))) Some(framework.culpritsCandidates.filter(c => framework.contrariesOf(c).contains(ruleArg.rule.head)) )
+          else None
+      ))
   }
 }

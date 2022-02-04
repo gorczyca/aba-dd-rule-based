@@ -24,22 +24,28 @@ case class PerformedMove(moveType: MoveType, argument: Argument) {
 
 
 object DisputeStateAuto {
-  def apply(potentialMove: PotentialMove, currentDStateAuto: DisputeStateAuto): DisputeStateAuto = {
+  def apply(potentialMove: PotentialMove, currentDStateAuto: DisputeStateAuto, increaseBranchingLevel: Boolean): DisputeStateAuto = {
 
     //
     val newArgument = potentialMove match {
-      case PotentialMove(Some(ruleArgument), None, _, _, _) => ruleArgument
-      case PotentialMove(None, Some(assumptionArgument), _, _, _) => assumptionArgument
+      case PotentialMove(Some(ruleArgument), None, _, _, _, _) => ruleArgument
+      case PotentialMove(None, Some(assumptionArgument), _, _, _, _) => assumptionArgument
     }
     val newPerformedMove = PerformedMove(potentialMove.moveType, newArgument)
-    DisputeStateAuto(potentialMove.perform(currentDStateAuto.dState), currentDStateAuto.ignoredAssumptions, currentDStateAuto.performedArguments :+ newPerformedMove)
+
+    val branchingLevel = if (increaseBranchingLevel) currentDStateAuto.branchingLevel + 1 else currentDStateAuto.branchingLevel
+
+    new DisputeStateAuto(potentialMove.perform(currentDStateAuto.dState), currentDStateAuto.ignoredCulpritCandidates, currentDStateAuto.ignoredProponentAssumptions, currentDStateAuto.performedArguments :+ newPerformedMove, branchingLevel)
   }
 }
 
 
 case class DisputeStateAuto(dState: DisputeState,
-                            ignoredAssumptions: Set[Literal],
-                            performedArguments: List[PerformedMove]) {
+                            ignoredCulpritCandidates: Set[Literal],
+                            ignoredProponentAssumptions: Set[Literal],
+                            performedArguments: List[PerformedMove],
+                            branchingLevel: Int = 0// TODO: temprary
+                           ) {
   def performedMovesToString: List[String] =
     performedArguments.zipWithIndex.map { case (arg, index) => s"${index + 1}: [${arg.toString}]" }
 }
@@ -161,13 +167,13 @@ class AutomaticReasoner(val turnChoice: TurnChoiceType,
 
       // TODO: these thing should be somewhere in some function
       val ruleAttacksSorted = ruleAttacks.map(_._3).sortWith {
-        case (PotentialMove(Some(RuleArgument(rule1)), None, _, PB2 | OB2, _), // TODO: i should have already added the function as a parameter instead. then i dont have to add framework and statements
-        PotentialMove(Some(RuleArgument(rule2)), None, _, PB2 | OB2, _)) => ruleChoiceMap(ruleChoiceType)(framework, statements)(rule1, rule2)
+        case (PotentialMove(Some(RuleArgument(rule1)), None, _, PB2 | OB2, _, _), // TODO: i should have already added the function as a parameter instead. then i dont have to add framework and statements
+        PotentialMove(Some(RuleArgument(rule2)), None, _, PB2 | OB2, _, _)) => ruleChoiceMap(ruleChoiceType)(framework, statements)(rule1, rule2)
       }
 
       val assumptionAttacksSorted = assumptionAttacks.map(_._3).sortWith {
-        case (PotentialMove(None, Some(LiteralArgument(lit1)), _, PF2 | OF2, _),
-          PotentialMove(None, Some(LiteralArgument(lit2)), _, PF2 | OF2, _)) => assumptionChoiceMap(assumptionChoiceType)(framework)(lit1, lit2)
+        case (PotentialMove(None, Some(LiteralArgument(lit1)), _, PF2 | OF2, _, _),
+          PotentialMove(None, Some(LiteralArgument(lit2)), _, PF2 | OF2, _, _)) => assumptionChoiceMap(assumptionChoiceType)(framework)(lit1, lit2)
 
       }
       ruleAttacksSorted ++ assumptionAttacksSorted
@@ -178,13 +184,13 @@ class AutomaticReasoner(val turnChoice: TurnChoiceType,
 
       // TODO: these thing should be somewhere in some function
       val ruleAttacksSorted = ruleAttacks.map(_._3).sortWith {
-        case (PotentialMove(Some(RuleArgument(rule1)), None, _, PB2 | OB2, _), // TODO: i should have already added the function as a parameter instead. then i dont have to add framework and statements
-        PotentialMove(Some(RuleArgument(rule2)), None, _, PB2 | OB2, _)) => ruleChoiceMap(ruleChoiceType)(framework, statements)(rule1, rule2)
+        case (PotentialMove(Some(RuleArgument(rule1)), None, _, PB2 | OB2, _, _), // TODO: i should have already added the function as a parameter instead. then i dont have to add framework and statements
+        PotentialMove(Some(RuleArgument(rule2)), None, _, PB2 | OB2, _, _)) => ruleChoiceMap(ruleChoiceType)(framework, statements)(rule1, rule2)
       }
 
       val assumptionAttacksSorted = assumptionAttacks.map(_._3).sortWith {
-        case (PotentialMove(None, Some(LiteralArgument(lit1)), _, PF2 | OF2, _),
-        PotentialMove(None, Some(LiteralArgument(lit2)), _, PF2 | OF2, _)) => assumptionChoiceMap(assumptionChoiceType)(framework)(lit1, lit2)
+        case (PotentialMove(None, Some(LiteralArgument(lit1)), _, PF2 | OF2, _, _),
+        PotentialMove(None, Some(LiteralArgument(lit2)), _, PF2 | OF2, _, _)) => assumptionChoiceMap(assumptionChoiceType)(framework)(lit1, lit2)
       }
 
       assumptionAttacksSorted ++ ruleAttacksSorted
@@ -201,9 +207,11 @@ class AutomaticReasoner(val turnChoice: TurnChoiceType,
     implicit val dState: DisputeState = dStateAuto.dState
 
     val pMovesTypes = Seq(PB1, OB2, OF2, PF1) // move types that belong to the proponent's turn
+    val oMovesTypes = Seq(OB1, PB2) // move types that belong to the proponent's turn
+    // PF2 sometimes belongto P, sometimes to O
+
 
     //val moves = possibleMoves.partition { case (moveType, _) => pMovesTypes.contains(moveType) }
-    val (pMoves, oMoves) = possibleMoves.partition { case (moveType, _) => pMovesTypes.contains(moveType) }
 
     val defences = framework.defences
     val culpritCandidates = framework.culpritsCandidates
@@ -212,33 +220,59 @@ class AutomaticReasoner(val turnChoice: TurnChoiceType,
 
     val bStatements = framework.bLitArgs.map(_.lit) diff pStatements
 
+    // TODO: check if not empty
+    val (oPF2Moves, pPF2Moves) = possibleMoves.filter(_._1 == PF2).values.flatten.partition {   // this filtering is in case PF2 map is empty
+      case PotentialMove(None, Some(assArg), _, PF2, _, _) => framework.contrariesOf(culpritCandidates).contains(assArg.lit) // TODO: framework.contraryOf(assArg.lit)
+    }
+
+    val (pMovesWOPF2, oMovesWOPF2) = possibleMoves.filter(_._1 != PF2).partition {
+      case (moveType, _) => pMovesTypes.contains(moveType)
+    }
+
+    val pMoves = pMovesWOPF2 + (PF2 -> pPF2Moves)
+    val oMoves = oMovesWOPF2 + (PF2 -> oPF2Moves)
+
+
+
     val pMovesMap1 = pMoves.flatMap { case (moveType, potentialMovesSeq) => potentialMovesSeq.flatMap(potentialMove =>
       potentialMove match {
-        case PotentialMove(Some(ruleArg), None, _, PB1, _) => List((ruleArg.rule.head, moveType, potentialMove))
-        case PotentialMove(Some(ruleArg), None, _, OB2, _) =>
+        // backward expansion of a proponent's statement
+        case PotentialMove(Some(ruleArg), None, _, PB1, _, _) => List((ruleArg.rule.head, moveType, potentialMove))
+        // this can be either attacking a defence OR attacking a culprit candidate
+        case PotentialMove(Some(ruleArg), None, _, OB2, _, _) =>
           val assumptionsToAttack =
             framework.contraries.filter(_.contrary == ruleArg.rule.head).map(_.assumption) intersect framework.defences
           assumptionsToAttack.map(ass => (ass, moveType, potentialMove)).toList
 
-        case PotentialMove(None, Some(assumptionArg), _, OF2, _) =>
+        case PotentialMove(None, Some(assumptionArg), _, OF2, _, _) =>
           val assumptionsToAttack =
             framework.contraries.filter(_.contrary == assumptionArg.lit).map(_.assumption) intersect framework.defences
           assumptionsToAttack.map(ass => (ass, moveType, potentialMove)).toList
+
+        // TODO:
+        //  the forward moves from complete statements we can perform with no caution - assuming the framework is consistent
+        //  anyways, current reasoner should handle it
+        case PotentialMove(Some(ruleArg), None, _, PF1, _, _) => List((ruleArg.rule.head, moveType, potentialMove))
+
+        // add only if non-ignored potential move
+        case PotentialMove(None, Some(assumptionArg), _, PF2, _, _) =>
+          if (dStateAuto.ignoredProponentAssumptions.contains(assumptionArg.lit)) Nil
+          else List((assumptionArg.lit, moveType, potentialMove))
       }) }.toList.groupBy(_._1)
 
     val oMovesMap1 = oMoves.flatMap { case (moveType, potentialMovesSeq) => potentialMovesSeq.flatMap(potentialMove =>
       potentialMove match {
-        case PotentialMove(Some(ruleArg), None, _, OB1, _) => List((ruleArg.rule.head, moveType, potentialMove))
-        case PotentialMove(Some(ruleArg), None, _, PB2, _) =>
+        case PotentialMove(Some(ruleArg), None, _, OB1, _, _) => List((ruleArg.rule.head, moveType, potentialMove))
+        case PotentialMove(Some(ruleArg), None, _, PB2, _, _) =>
           val assumptionsToAttack =
             framework.contraries.filter(_.contrary == ruleArg.rule.head).map(_.assumption) intersect
-              (culpritCandidates diff dStateAuto.ignoredAssumptions)  // Ignored assumptions by proponent: he willnot attack those
+              (culpritCandidates diff dStateAuto.ignoredCulpritCandidates)  // Ignored assumptions by proponent: he willnot attack those
           assumptionsToAttack.map(ass => (ass, moveType, potentialMove)).toList
 
-        case PotentialMove(None, Some(assumptionArg), _, PF2, _) =>
+        case PotentialMove(None, Some(assumptionArg), _, PF2, _, _) =>
           val assumptionsToAttack =
             framework.contraries.filter(_.contrary == assumptionArg.lit).map(_.assumption) intersect
-              (culpritCandidates diff dStateAuto.ignoredAssumptions)
+              (culpritCandidates diff dStateAuto.ignoredCulpritCandidates)
           assumptionsToAttack.map(ass => (ass, moveType, potentialMove)).toList
       }) }.toList.groupBy(_._1)
 
@@ -251,21 +285,40 @@ class AutomaticReasoner(val turnChoice: TurnChoiceType,
       val chosenStatement = statementChoiceMap(pStatementChoice)(pMovesMap1.keySet, framework, proponentsPerformedMoves)
       // check if chosen statement is an assumption
       if (framework.assumptions.contains(chosenStatement)) {
-        // it is an assumption to be attacked by the opponent
-        val movesToPerformSorted = attackPreferenceMap(oAttackPreference)(pMovesMap1(chosenStatement), oRuleChoice, oAssumptionChoice, framework, bStatements)
-        // TODO: add option to attack using ALL possible options maybe
-        val moveToPerform = movesToPerformSorted.head
+        // if proponent chosen and statement is an assumption, then either it is a defence (it has to be attacked by opp)
+        // OR an assumption to add to P (then we can ignore or add it to P)
 
-        val newDStateAuto = DisputeStateAuto(moveToPerform, dStateAuto)
-        List(newDStateAuto)
+        if (defences.contains(chosenStatement)) {
+          // it is a defence; to be attacked by the opponent
+          val movesToPerformSorted = attackPreferenceMap(oAttackPreference)(pMovesMap1(chosenStatement), oRuleChoice, oAssumptionChoice, framework, bStatements)
+          // TODO: add option to attack using ALL possible options maybe
+          val moveToPerform = movesToPerformSorted.head
+          val newDStateAuto = DisputeStateAuto(moveToPerform, dStateAuto, increaseBranchingLevel = false)
+          List(newDStateAuto)
+        } else {
+          // it is an assumption to be added to P
+          val addingMove = pMovesMap1(chosenStatement).map(_._3).map(potMove => DisputeStateAuto(potMove, dStateAuto, increaseBranchingLevel = true)) // should be exactly one always anyways
+          val ignoringMove = DisputeStateAuto(dState, dStateAuto.ignoredCulpritCandidates, dStateAuto.ignoredProponentAssumptions + chosenStatement, dStateAuto.performedArguments, dStateAuto.branchingLevel + 1)
+          addingMove :+ ignoringMove
+        }
+
+
       } else {
-        // backward extension by the proponent
-        val movesToPerformSorted = pMovesMap1(chosenStatement).map(_._3).sortWith {
-          case (PotentialMove(Some(RuleArgument(rule1)), None, _, PB1, _),
-          PotentialMove(Some(RuleArgument(rule2)), None, _, PB1, _)) =>
-            ruleChoiceMap(pRuleChoice)(framework, pStatements)(rule1, rule2) }
+        if (pStatements.contains(chosenStatement)) {
+          // backward extension by the proponent (PB1)
+          val movesToPerformSorted = pMovesMap1(chosenStatement).filter(_._2 == PB1).map(_._3).sortWith {
+            case (PotentialMove(Some(RuleArgument(rule1)), None, _, PB1, _, _),
+            PotentialMove(Some(RuleArgument(rule2)), None, _, PB1, _, _)) =>
+              ruleChoiceMap(pRuleChoice)(framework, pStatements)(rule1, rule2)
+          }
 
-        movesToPerformSorted.map(potMove => DisputeStateAuto(potMove, dStateAuto))
+          movesToPerformSorted.map(potMove => DisputeStateAuto(potMove, dStateAuto, increaseBranchingLevel = true))
+        } else {
+          // forward move PF1
+          // a forward move, chosenStatement does not belong to P yet
+          // we will not add ALL the rules, only a single one is sufficient to derive chosenStatement
+          List(DisputeStateAuto(pMovesMap1(chosenStatement).filter(_._2 == PF1).map(_._3).head, dStateAuto, increaseBranchingLevel = false))
+        }
       }
     } else {
       // opponent chosen
@@ -273,20 +326,20 @@ class AutomaticReasoner(val turnChoice: TurnChoiceType,
       // check if chosen statement is an assumption
       if (framework.assumptions.contains(chosenStatement)) {
         // attack or ignore by proponent
-        val ignoringMove = DisputeStateAuto(dState, dStateAuto.ignoredAssumptions + chosenStatement, dStateAuto.performedArguments)
+        val ignoringMove = DisputeStateAuto(dState, dStateAuto.ignoredCulpritCandidates + chosenStatement, dStateAuto.ignoredProponentAssumptions, dStateAuto.performedArguments, dStateAuto.branchingLevel + 1)
         // attacking moves
         val movesToPerformSorted = attackPreferenceMap(pAttackPreference)(oMovesMap1(chosenStatement), pRuleChoice, pAssumptionChoice, framework, pStatements)
-        val firstMove::restOfMoves = movesToPerformSorted.map(potMove => DisputeStateAuto(potMove, dStateAuto))
+        val firstMove::restOfMoves = movesToPerformSorted.map(potMove => DisputeStateAuto(potMove, dStateAuto, increaseBranchingLevel = true))
         firstMove +: ignoringMove +: restOfMoves
       } else {
         // backward propagation by the opponent
         val movesToPerformSorted = oMovesMap1(chosenStatement).map(_._3).sortWith {
-          case (PotentialMove(Some(RuleArgument(rule1)), None, _, OB1, _),
-          PotentialMove(Some(RuleArgument(rule2)), None, _, OB1, _)) =>
+          case (PotentialMove(Some(RuleArgument(rule1)), None, _, OB1, _, _),
+          PotentialMove(Some(RuleArgument(rule2)), None, _, OB1, _, _)) =>
             ruleChoiceMap(oRuleChoice)(framework, bStatements)(rule1, rule2) }
 
         val moveToPerform = movesToPerformSorted.head
-        val newDStateAuto = DisputeStateAuto(moveToPerform, dStateAuto)
+        val newDStateAuto = DisputeStateAuto(moveToPerform, dStateAuto, increaseBranchingLevel = false)
         List(newDStateAuto)
       }
     }
@@ -309,6 +362,8 @@ class AutomaticReasoner(val turnChoice: TurnChoiceType,
       case None => 0
     }
 
+
+    // temporary
     val itInc = it + 1
     val itOp = Some(itInc)
     //println(s"Iteration: $itInc")
@@ -327,21 +382,43 @@ class AutomaticReasoner(val turnChoice: TurnChoiceType,
 
         if (stack.isEmpty || (onlyOne && successfulDS.nonEmpty)) (stack, successfulDS, false, duration)
         else {
-          implicit val headDS :: restOfDisputeStates = stack // todo: type annotation?
+          implicit val headDS :: restOfDisputeStates = stack // TODO: type annotation?
           implicit val headDState: DisputeState = headDS.dState
           implicit val possibleMoves: Map[MoveType, Seq[PotentialMove]] = DisputeAdvancement(dAdvancementType).getPossibleMoves
 
+          // temporary
+          if (headDS.performedArguments.isEmpty) {
+            // println("Initial:")
+            println(0 + ": " + headDS.dState.p.mkString("; ") + "\t" + s""" icc: { ${headDS.ignoredCulpritCandidates.mkString(";")} } ia: { ${headDS.ignoredProponentAssumptions.mkString(";")} }""")
+          } else {
+            val allPerformedMovesCount = headDS.performedArguments.size
+            println(allPerformedMovesCount +":" + "\t" * headDS.branchingLevel + headDS.performedArguments.last.toString +  "\t" + s""" icc: { ${headDS.ignoredCulpritCandidates.mkString(";")} } ia: { ${headDS.ignoredProponentAssumptions.mkString(";")} }""")
+          }
+
           TerminationCriteria.checkIfOver(tCriteriaType) match {
-            case Some(true) => getNewIncompleteSuccessfulDSAndStackRec(restOfDisputeStates, successfulDS :+ headDS, Some(sTime), itOp)
-            case Some(false) => getNewIncompleteSuccessfulDSAndStackRec(restOfDisputeStates, successfulDS, Some(sTime), itOp)
+            case Some(true) =>
+              println("\t" * headDS.branchingLevel + "SUCCESS!")
+              getNewIncompleteSuccessfulDSAndStackRec(restOfDisputeStates, successfulDS :+ headDS, Some(sTime), itOp)
+            case Some(false) =>
+              println("\t" * headDS.branchingLevel + "FAIL!")
+              getNewIncompleteSuccessfulDSAndStackRec(restOfDisputeStates, successfulDS, Some(sTime), itOp)
             case None =>
 
               // it is possible that the only PossibleMoves are to attack an ignored culprit candidate
+              // OR PF1 moves with assumptions chosen as ignored
               if (possibleMoves.values.flatten.forall {
-                case PotentialMove(Some(ruleArg), None, _, _, _) => framework.contrariesOf(headDS.ignoredAssumptions).contains(ruleArg.rule.head)
-                case PotentialMove(None, Some(assArg), _, _, _) => framework.contrariesOf(headDS.ignoredAssumptions).contains(assArg.lit)
+                // attack using a rule case
+                case PotentialMove(Some(ruleArg), None, _, PB2, _, _) => framework.contrariesOf(headDS.ignoredCulpritCandidates).contains(ruleArg.rule.head)
+
+                case PotentialMove(None, Some(assArg), _, PF2, _, _) =>
+                  // attack using an assumption
+                  if (framework.contrariesOf(framework.culpritsCandidates).contains(assArg.lit)) framework.contrariesOf(headDS.ignoredCulpritCandidates).contains(assArg.lit)
+                  // add an assumption to P
+                  else headDS.ignoredProponentAssumptions.contains(assArg.lit)
+                //case PotentialMove(None, Some(assArg), _, PF2, _) if !framework.contrariesOf(framework.culpritsCandidates).contains(assArg.lit) => headDS.ignoredProponentAssumptions.contains(assArg.lit)
                 case _ => false
               }) {
+                println("\t" * headDS.branchingLevel + "FAIL! (only ignored moves left)")
                 getNewIncompleteSuccessfulDSAndStackRec(restOfDisputeStates, successfulDS, Some(sTime), itOp)
               } else {
 

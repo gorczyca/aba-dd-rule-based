@@ -13,7 +13,9 @@ object PF2Move extends Move {
     (varUnion -- setDiff).map(LiteralArgument) // definition
       .diff(dState.pLitArgs)  // prevent from repeating
       .toSeq.sortBy(_.lit.id) // sorting
-      .map( litArg => PotentialMove(None, Some(litArg), Set(litArg), Move.PF2, None) )
+      .map( litArg => PotentialMove(None, Some(litArg), Set(litArg), Move.PF2, None,
+        if (framework.culpritsCandidates.exists(c => framework.contrariesOf(c).contains(litArg.lit))) Some(framework.culpritsCandidates.filter(c => framework.contrariesOf(c).contains(litArg.lit)) )
+        else None ))
 
   }
 }
