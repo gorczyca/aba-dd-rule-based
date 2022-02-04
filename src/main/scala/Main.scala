@@ -235,7 +235,6 @@ object Main {
     findSuccessfulDerivationsRec(initialDSs)
   }
 
-
   def progressDerivation(derivation: List[DisputeState],
                          genDot: Boolean,
                          genArg: Boolean,

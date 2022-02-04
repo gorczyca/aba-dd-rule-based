@@ -1,3 +1,3 @@
 package aba.framework
 
-case class Contrary(assumption: Literal, contrary: Literal)
+case class Contrary(assumption: String, contrary: String)
