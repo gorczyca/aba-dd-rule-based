@@ -48,15 +48,22 @@ object DisputeStateWrapper {
 }
 
 // TODO: find better way to handle this many things
+
+
+// TODO: all of those below are the things from the definitions of PB, PF etc
 case class DisputeStateWrapper(disputeState: DisputeState,
                                pRemainingRules: Set[Rule],
+                               pPlayedUnexpandedStatements: Set[String],
+                               culpritCandidates: Set[String],
+                               defenceContraries: Set[String],
+                               pCompletePieces: Set[String],
+
                                //bRemainingRules: Set[Rule],
                                pBlockedRules: Set[Rule],
                                //bBlockedRules: Set[Rule],
                                pRemainingNonBlockedRules: Set[Rule],
                                bRemainingNonBlockedRules: Set[Rule],
                                pBlockedAssumptions: Set[String],
-                               pCompletePieces: Set[String],
                                bCompletePieces: Set[String],
                                pUnexpandedStatements: Set[String],
                                fullyExpandedStatements: Set[String],

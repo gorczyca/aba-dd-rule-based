@@ -3,7 +3,7 @@ package aba.move
 import aba.framework.{Framework, Literal}
 import aba.move.DisputeAdvancement.DisputeAdvancementType
 import aba.move.Move.{MoveType, OB1, OB2, OF1, OF2, PB1, PB2, PF1, PF2}
-import aba.reasoner.{DisputeState, PotentialMove}
+import aba.reasoner.{DisputeState, PotentialMove, PotentialMove2}
 
 object DisputeAdvancement extends Enumeration {
   type DisputeAdvancementType = Value
@@ -21,7 +21,6 @@ object DisputeAdvancement extends Enumeration {
     case None => throw new Exception(s"No advancement type: $advancementTypeString")
   }
 
-  //def advancementTypesPartialOrder = Seq(DAB, DABF, Array(DC, DS), DF)
 
   def apply(advancementType: DisputeAdvancementType)(implicit framework: Framework, dState: DisputeState): DisputeAdvancement = {
     val moves = advancementType match {
@@ -79,7 +78,7 @@ object DisputeAdvancement extends Enumeration {
 case class DisputeAdvancement(advancementType: DisputeAdvancementType,
                               moves: Seq[(MoveType, Set[Literal])]) {
 
-  def getPossibleMoves(implicit framework: Framework, dState: DisputeState): Map[MoveType, Seq[PotentialMove]] = {
+  def getPossibleMoves(implicit framework: Framework, dState: DisputeState): Map[MoveType, Seq[PotentialMove2]] = {
     moves.map { case (moveType, set) => (moveType, Move(moveType).isPossible(set)) }.filter(_._2.nonEmpty).toMap
   }
 }
