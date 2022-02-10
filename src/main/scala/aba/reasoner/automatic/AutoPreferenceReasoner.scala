@@ -1,17 +1,11 @@
 package aba.reasoner.automatic
 
 import aba.framework.Framework
-import aba.move.{DisputeAdvancement, TerminationCriteria}
+import aba.move.{DisputeAdvancement, PB2Move, PF2Move, TerminationCriteria}
 import aba.move.DisputeAdvancement.DisputeAdvancementType
 import aba.move.Move.{MoveType, OB1, OB2, OF2, PB1, PB2, PF1, PF2}
 import aba.move.TerminationCriteria.TerminationCriteriaType
-import aba.reasoner.automatic.AssumptionChoice.AssumptionChoiceType
-import aba.reasoner.automatic.AttackPreference.AttackPreferenceType
-import aba.reasoner.automatic.OpponentsAttackStrategy.OpponentsAttackStrategyType
-import aba.reasoner.automatic.RuleChoice.RuleChoiceType
-import aba.reasoner.automatic.StatementChoice.StatementChoiceType
-import aba.reasoner.automatic.TurnChoice.TurnChoiceType
-import aba.reasoner.{DisputeState, PotentialMove, RuleArgument}
+import aba.reasoner.{DisputeState, PotentialMove, PotentialMove2, RuleArgument}
 
 import scala.annotation.tailrec
 
@@ -23,7 +17,7 @@ class AutoPreferenceReasoner(dfs: Boolean) {
   val oppPreference: Seq[MoveType] = Seq(OB1, OB2, OF2)
 
 
-  private def generateNewDisputeStates(implicit possibleMoves: Map[MoveType, Seq[PotentialMove]],
+  private def generateNewDisputeStates(implicit possibleMoves: Map[MoveType, Seq[PotentialMove2]],
                                        framework: Framework,
                                        dStateAuto: DisputeStateAuto) : List[DisputeStateAuto] = {
 
@@ -31,7 +25,7 @@ class AutoPreferenceReasoner(dfs: Boolean) {
     // TODO: this filtering do down there. And already if there will be some moves filtered out, it will be easier to decide the termination
     val possMovesModified1 = if (possibleMoves.contains(PB2)) {
       val newPB2 = possibleMoves(PB2).filter {
-        case PotentialMove(Some(_), None, _, PB2, _, Some(attacked)) => !attacked.subsetOf(dStateAuto.ignoredCulpritCandidates)
+        case PB2Move(rule, Some(attacked), _) => !attacked.subsetOf(dStateAuto.ignoredCulpritCandidates)
         case _ => true
       }
       if (newPB2.isEmpty) possibleMoves - PB2
@@ -41,9 +35,10 @@ class AutoPreferenceReasoner(dfs: Boolean) {
     val newPossMoves = if (possMovesModified1.contains(PF2)) {
       val newPF2 = possMovesModified1(PF2).filter {
         // not attacking anything, just trying to add assArg to P
-        case PotentialMove(None, Some(assArg), _, PF2, _, None) => !dStateAuto.ignoredProponentAssumptions.contains(assArg.lit)
+            // TODO: catching multiple traits? PF2 attacking move?
+        case PF2Move(asm, None, _) => !dStateAuto.ignoredProponentAssumptions.contains(asm)
         // attacking, check if attacked not added to ignored
-        case PotentialMove(None, Some(_), _, PF2, _, Some(attacked)) => !attacked.subsetOf(dStateAuto.ignoredCulpritCandidates)
+        case PF2Move(_, Some(attacked), _) => !attacked.subsetOf(dStateAuto.ignoredCulpritCandidates)
         case _ => true
       }
       if (newPF2.isEmpty) possMovesModified1 - PF2
@@ -69,14 +64,14 @@ class AutoPreferenceReasoner(dfs: Boolean) {
           // backward moves. We need to choose a sentence to backward expand and add to stack all of them
           movesSeq.groupBy {
             case PotentialMove(Some(RuleArgument(rule)), None, _, PB1, _, _) => rule.head
-          }.head._2.map(potMove => DisputeStateAuto(potMove, dStateAuto, false)).toList
+          }.head._2.map(potMove => DisputeStateAuto(potMove, dStateAuto, increaseBranchingLevel = false)).toList
         case (PB2, moveSeq) =>
           // attack moves. We need to choose which one to attack
           val potMoves = moveSeq.groupBy {
             case PotentialMove(Some(RuleArgument(rule)), None, _, PB2, _, Some(attacked)) => rule.head
           }.head._2
           val ignoredCulpritCandidates = potMoves.head.attacking.get  // I can be sure that it attacks something
-          potMoves.map(potMove => DisputeStateAuto(potMove, dStateAuto, false)).toList :+ // add the ignoring move
+          potMoves.map(potMove => DisputeStateAuto(potMove, dStateAuto, increaseBranchingLevel = false)).toList :+ // add the ignoring move
             DisputeStateAuto(dStateAuto.dState, dStateAuto.ignoredCulpritCandidates ++ ignoredCulpritCandidates, dStateAuto.ignoredProponentAssumptions, dStateAuto.performedArguments)
         case (PF2, moveSeq) =>
           val (moveSeqAttacking, moveSetNonAttacking) = moveSeq.partition { case PotentialMove(_, _, _, _, _, attackingOpt) => attackingOpt match {
@@ -89,14 +84,14 @@ class AutoPreferenceReasoner(dfs: Boolean) {
 
           if (chosenSet == moveSeqAttacking) {
             val attackingMoves = moveSeqAttacking.groupBy(_.attacking.get).head
-            attackingMoves._2.map(potMove => DisputeStateAuto(potMove, dStateAuto, false)) :+ // ignoring move
+            attackingMoves._2.map(potMove => DisputeStateAuto(potMove, dStateAuto, increaseBranchingLevel = false)) :+ // ignoring move
               DisputeStateAuto(dStateAuto.dState, dStateAuto.ignoredCulpritCandidates ++ attackingMoves._1, dStateAuto.ignoredProponentAssumptions, dStateAuto.performedArguments)
           }.toList  else {
             // non attacking move = just simply add or do ignore adding
             val assMove = moveSetNonAttacking.head
-            DisputeStateAuto(assMove, dStateAuto, false) :: DisputeStateAuto(dStateAuto.dState, dStateAuto.ignoredCulpritCandidates, dStateAuto.ignoredProponentAssumptions + assMove.assumptionArgument.get.lit, dStateAuto.performedArguments) :: Nil
+            DisputeStateAuto(assMove, dStateAuto, increaseBranchingLevel = false) :: DisputeStateAuto(dStateAuto.dState, dStateAuto.ignoredCulpritCandidates, dStateAuto.ignoredProponentAssumptions + assMove.assumptionArgument.get.lit, dStateAuto.performedArguments) :: Nil
           }
-        case (PF1, moveSeq) => DisputeStateAuto(moveSeq.head, dStateAuto, false) :: Nil
+        case (PF1, moveSeq) => DisputeStateAuto(moveSeq.head, dStateAuto, increaseBranchingLevel = false) :: Nil
       }
     } else {
       // opponent Moves. We will just perform it

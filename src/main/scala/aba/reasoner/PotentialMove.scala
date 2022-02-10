@@ -1,7 +1,35 @@
 package aba.reasoner
 
-import aba.framework.Literal
+import aba.framework.{Framework, Literal, Rule}
 import aba.move.Move.MoveType
+import aba.reasoner.automatic.{PerformedAssumptionMove, PerformedMove2, PerformedRuleMove}
+
+trait PotentialMove2 {
+  def moveType: MoveType
+  def attacking: Option[Set[String]]
+  def perform(implicit dState: DisputeState, framework: Framework): DisputeState
+  def toPerformedMove: PerformedMove2
+}
+
+
+abstract case class PotentialRuleMove(rule: Rule
+  //override val moveType: MoveType,
+ //override val attacking: Option[Set[String]],
+) extends PotentialMove2 {
+  //  def rule: Rule
+  override def toPerformedMove: PerformedMove2 = PerformedRuleMove(moveType, rule)
+}
+
+abstract case class PotentialAssumptionMove(assumption: String
+  //override val moveType: MoveType,
+  //override val attacking: Option[Set[String]],
+  //assumption: String
+) extends PotentialMove2 {
+  //  def assumption: String
+  override def toPerformedMove: PerformedMove2 = PerformedAssumptionMove(moveType, assumption)
+}
+
+
 
 
 // TODO Here also sealed trait

@@ -14,6 +14,8 @@ import dot.{ABDotConverter, DotConverter}
 import java.io.PrintWriter
 import scala.annotation.tailrec
 
+// TODO: add functionality to add the goals dynamically in code OR via commandline args
+
 object Main {
 
   def main(args: Array[String]): Unit = {
@@ -320,13 +322,16 @@ object Main {
         println(s"Termination criteria type: $tCriteria")
         (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case "a" | "assumptions" =>
-        println(s"Assumptions: \n\t${framework.decorateAssumptions.map(_._2).mkString("; ")}\n")
+        // TODO
+        //println(s"Assumptions: \n\t${framework.decorateAssumptions.map(_._2).mkString("; ")}\n")
         (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case "r" | "rules" =>
-        println(s"Rules:\n\t${framework.decorateRules.map(_._2).mkString("; ")}\n")
+        // TODO
+        //println(s"Rules:\n\t${framework.decorateRules.map(_._2).mkString("; ")}\n")
         (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case "moves" =>
-        println(s"Moves sequence:\n\t${derivation.map(_.sequenceElement).mkString("; ")}\n")
+        // TODO
+        //println(s"Moves sequence:\n\t${derivation.map(_.sequenceElement).mkString("; ")}\n")
         (derivation, false, false, genDot, genArg, dAdvancement, tCriteria)
       case "m" | "more" =>
         printAdditionalInformation
@@ -431,32 +436,32 @@ object Main {
   def printDebuggingInformation(implicit dState: DisputeState, framework: Framework): Unit = {
 
 
-    val culpritCandidates = framework.culpritsCandidates
-    val defences = framework.defences
-
-    println("======================\n" +
-            "        GENERAL\n" +
-            "======================\n")
-    Seq(
-      ("Culprit candidates", culpritCandidates),
-      ("Culprit candidates contraries", framework.contrariesOf(culpritCandidates)),
-      ("Remaining non-blocked rules for proponent", framework.remainingNonBlockedPRules),
-      ("Unexpanded prop statements", framework.unexpandedPStatements),
-      ("Defences", defences),
-      ("Defence contraries", framework.contrariesOf(defences)),
-      ("Complete prop arguments", framework.completePiecesP),
-      ("J (for complete sem.)", framework.j),
-      ("Unexpanded statements for the proponent", framework.unexpandedPStatements),
-      ("Played fully expanded statements", framework.fullyExpandedStatements),
-      ("Played blocked pieces", framework.playedBlockedPieces),
-      ("Unblocked complete played pieces of the opponent", framework.unblockedCompletePlayedPiecesB),
-    ).foreach{ case (desc, set) => println(s"$desc:\n\t${set.mkString("; ")}") }
-
-    println("======================\n" +
-            " TERMINATION CRITERIA\n" +
-            "======================\n")
-
-    TerminationCriteria.seemsToBeWinningDebug
+//    val culpritCandidates = framework.culpritsCandidates
+//    val defences = framework.defences
+//
+//    println("======================\n" +
+//            "        GENERAL\n" +
+//            "======================\n")
+//    Seq(
+//      ("Culprit candidates", culpritCandidates),
+//      ("Culprit candidates contraries", framework.contrariesOf(culpritCandidates)),
+//      ("Remaining non-blocked rules for proponent", framework.remainingNonBlockedPRules),
+//      ("Unexpanded prop statements", framework.unexpandedPStatements),
+//      ("Defences", defences),
+//      ("Defence contraries", framework.contrariesOf(defences)),
+//      ("Complete prop arguments", framework.completePiecesP),
+//      ("J (for complete sem.)", framework.j),
+//      ("Unexpanded statements for the proponent", framework.unexpandedPStatements),
+//      ("Played fully expanded statements", framework.fullyExpandedStatements),
+//      ("Played blocked pieces", framework.playedBlockedPieces),
+//      ("Unblocked complete played pieces of the opponent", framework.unblockedCompletePlayedPiecesB),
+//    ).foreach{ case (desc, set) => println(s"$desc:\n\t${set.mkString("; ")}") }
+//
+//    println("======================\n" +
+//            " TERMINATION CRITERIA\n" +
+//            "======================\n")
+//
+//    TerminationCriteria.seemsToBeWinningDebug
   }
 
   def printHelp(): Unit = {

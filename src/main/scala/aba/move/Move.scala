@@ -3,7 +3,7 @@ package aba.move
 import scala.language.implicitConversions
 import aba.framework.{Framework, Literal}
 import aba.move.DisputeAdvancement.{DAB, DABF, DC, DF, DS, DisputeAdvancementType}
-import aba.reasoner.{DisputeState, PotentialMove}
+import aba.reasoner.{DisputeState, PotentialMove, PotentialMove2}
 
 import scala.math.Ordering.Implicits.seqOrdering
 
@@ -86,5 +86,5 @@ object Move extends Enumeration {
 // Abstract class for all moves
 abstract class Move {
   //def isPossible(dState: DisputeState)(implicit framework: Framework): Set[PotentialMove]
-  def isPossible(set: Set[Literal])(implicit framework: Framework, dState: DisputeState): Seq[PotentialMove]
+  def isPossible(advancementType: DisputeAdvancementType)(implicit framework: Framework, dState: DisputeState): Seq[PotentialMove2]
 }
