@@ -1,5 +1,5 @@
-//name := "aba-dd-rule"
-name := "flexABle"
+name := "aba-dd-rule"
+//name := "flexABle"
 
 //version := "0.1"
 version := "1.0"
