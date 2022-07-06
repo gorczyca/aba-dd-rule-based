@@ -2,35 +2,45 @@ package aba.framework
 
 import aba.fileParser.FileParser
 import aba.move.Move.MoveType
-import aba.reasoner.{Argument, DisputeState, LiteralArgument, PotentialMove, RuleArgument}
+import aba.reasoner.{Argument, DisputeState, LiteralArgument, PotentialMove, PotentialMove2, RuleArgument}
 
 import scala.annotation.tailrec
 
 // companion object
 object Framework {
-  def apply(inputType: String, filePath: String): Framework = FileParser(inputType, filePath)
+  def apply(inputType: String, filePath: String, goal: Option[String] = None): Framework = FileParser(inputType, filePath, goal)
 }
 
 
 // TODO: keep here the file path
 
-class Framework (val rules: Set[Rule],
+case class Framework (val rules: Set[Rule],
                  val assumptions: Set[String],
                  val contraries: Set[Contrary],
-                 val goals: Set[String],
-                 val constraints: Set[String],
+                 var goals: Set[String], // TODO: temporary
+                 var constraints: Set[String], // TODO: var temporary
                  val alphabet: Set[String]
                 ) {
+
+  //
+  def isEvenPossible: (Option[Set[String]], Option[Set[String]]) = {
+    // check if goals do not contain self-contradictory assumptions or assumptions which are constraints
+    val selfContradictingGoals = goals intersect selfContradictingAssumptions
+    val constrainedGoals = goals intersect constraints
+
+    val selfCG = if (selfContradictingGoals.nonEmpty) Some(selfContradictingGoals) else None
+    val constG = if (constrainedGoals.nonEmpty) Some(constrainedGoals) else None
+
+    (selfCG, constG)
+  }
 
   // TODO: this should be calculated only once
   val selfContradictingAssumptions: Set[String] = contraries.filter(ctr => ctr.contrary == ctr.assumption).map(_.assumption)
 
-  def initialDState: DisputeState = DisputeState(goals)
-
   // helpers
   def contrariesOf(statement: String): Set[String] = contraries.filter(_.assumption == statement).map(_.contrary)
 
-  def contrariesOf(statements: Set[String]): Set[String] = statements.map(contrariesOf)
+  def contrariesOf(statements: Set[String]): Set[String] = statements.flatMap(contrariesOf)
 
 //  def decorateAssumptions(implicit dState: DisputeState): Seq[(Literal, String)] = {
 //    // TODO: improve performance

@@ -1,0 +1,21 @@
+% Assumptions
+q.
+r.
+s.
+u.
+
+% Contraries
+q:nq.
+s:ns.
+r:nr.
+u:nu.
+
+% Rules
+ns :- q.
+nq :- r,s.
+nq :- u,v.
+nr :-.
+nu :-.
+
+% Goal
+?ns.

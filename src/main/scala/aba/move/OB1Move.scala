@@ -3,96 +3,39 @@ package aba.move
 import aba.framework.{Contrary, Framework, Rule}
 import aba.move.DisputeAdvancement.{DC, DF, DisputeAdvancementType}
 import aba.move.Move.{MoveType, OB1}
-import aba.reasoner.{DisputeState, PotentialMove2, PotentialRuleMove}
+import aba.reasoner.{DisputeState, NonAttackingMove, OpponentMove, PotentialMove2, PotentialRuleMove}
 
-object OB1Move extends Move {
+object OB1Move extends Move with OpponentsAttackingMove {
+
+  def validRuleHeads(advancementType: DisputeAdvancementType)(implicit framework: Framework, dState: DisputeState): Set[String] = {
+    (advancementType match {
+      case DC => dState.bUnblockedStatementsSupportingDefenceContraries ++ dState.bUnblockedStatementsSupportingDefendedAssumptionsContraries
+      case DF =>
+        val anyContraries = framework.contraries.map(_.contrary)
+        val remainingNonBlockedStatements = dState.bStatements -- dState.bPlayedBlockedStatements
+        val remainingNonBlockedRules = dState.bRules -- dState.bPlayedBlockedRules
+        val initialStatementsSupportingContraries =  remainingNonBlockedStatements intersect anyContraries
+
+        val (newBUnblockedStatementsSupportingContraries, _) = DisputeState.calculateBUnblockedPiecesSupportingStatementsInSet(initialStatementsSupportingContraries, Set.empty, remainingNonBlockedStatements -- initialStatementsSupportingContraries, remainingNonBlockedRules)
+        newBUnblockedStatementsSupportingContraries
+      // TODO: once there is an implementation, TODO: check if I actually need it or can just use any rules? framework.contraries.map(_.contrary) // contraries of any defence
+      case _ => dState.bUnblockedStatementsSupportingDefenceContraries
+    }) -- framework.assumptions
+  }
+
   override def isPossible(advancementType: DisputeAdvancementType)(implicit framework: Framework, dState: DisputeState): Seq[PotentialMove2] = {
 
-    // TODO: put this to some method of the advancement type maybe?
-    val validRuleHeads = advancementType match {
-      case DC => dState.bUnblockedStatementsSupportingDefenceContraries ++ dState.bUnblockedStatementsSupportingDefendedAssumptionsContraries
-      case DF => ???  // TODO: once there is an implementation, TODO: check if I actually need it or can just use any rules? framework.contraries.map(_.contrary) // contraries of any defence
-      case _ => dState.bUnblockedStatementsSupportingDefendedAssumptionsContraries
-    }
+    val ruleHeads = validRuleHeads(advancementType)
 
     dState.bRemainingNonBlockedRules.filter {
-      case Rule(_, head, _) => validRuleHeads.contains(head)
-    }.map(rule => {
-      // TODO: will I need the attacking things here? If this is just backwards
-
-      OB1Move(rule, None)
-    }).toSeq
+      case Rule(_, head, _) => ruleHeads.contains(head)
+    }.map(rule => OB1Move(rule, attackedAssumptionsBySet(rule.statements, advancementType))).toSeq
   }
 }
 
 case class OB1Move(override val rule: Rule,
-                   override val attacking: Option[Set[String]],
-                   override val moveType: MoveType = OB1
-                  ) extends PotentialRuleMove(rule) {
-
-  override def perform(implicit dState: DisputeState, framework: Framework): DisputeState = {
-
-    val newBStatements = dState.bStatements ++ rule.body
-    val newBRules = dState.bRules + rule
-
-    val newBRemainingNonBlockedRules = dState.bRemainingNonBlockedRules - rule
-    val newBFullyExpandedStatements = newBStatements.filter(st => !newBRemainingNonBlockedRules.exists(rule => rule.head == st))  // TODO: here optimization possible
-
-    // played blocked pieces
-    val (newBPlayedBlockedStatements, newBPlayedBlockedRules) = dState.calculateBPlayedBlockedPiecesRec(dState.culprits, Set.empty, newBFullyExpandedStatements -- framework.assumptions, newBRules)
-
-    // unblocked complete pieces - TODO: since no new culprits appear, we can reuse what we have already
-    val initialCompleteUnblockedStatements = dState.bUnblockedCompletePlayedStatements // ++ ruleAssumptions // because we are using this rule we are sure it has no culprits // TODO: do we even need the assumptions?
-    val remainingNonBlockedStatements = (newBStatements -- newBPlayedBlockedStatements) -- initialCompleteUnblockedStatements // TODO
-    val remainingNonBlockedRules = (newBRules -- newBPlayedBlockedRules) -- dState.bUnblockedCompletePlayedRules
-    val (newBUnblockedCompleteStatements, newBUnblockedCompleteRules) =
-      dState.calculateBUnblockedCompletePiecesRec(initialCompleteUnblockedStatements, dState.bUnblockedCompletePlayedRules, remainingNonBlockedStatements -- framework.assumptions, remainingNonBlockedRules)
-
-    // unblocked pieces supporting defence contraries // TODO: this probably can be optimized, reuse what we had!
-    val initialStatementsSupportingDefenceContraries = remainingNonBlockedStatements intersect framework.contrariesOf(dState.defences)
-    val remainingNonBlockedStatementsPossiblySupportingDefenceContraries = newBStatements -- newBPlayedBlockedStatements
-    val remainingNonBlockedRulesPossiblySupportingDefenceContraries = newBRules -- newBPlayedBlockedRules
-    val (newBUnblockedStatementsSupportingDefenceContraries, newBUnblockedRulesSupportingDefenceContraries) = dState.calculateBUnblockedPiecesSupportingStatementsInSet(initialStatementsSupportingDefenceContraries, Set.empty, remainingNonBlockedStatementsPossiblySupportingDefenceContraries, remainingNonBlockedRulesPossiblySupportingDefenceContraries)
-
-    val attackedByBUnblockedCompleteStatements = framework.contraries.filter(ctr => newBUnblockedCompleteStatements.contains(ctr.contrary)).map(_.assumption)
-    val newCurrentlyDefendedAssumptions = framework.assumptions -- attackedByBUnblockedCompleteStatements
-    val newCurrentlyDefendedAssumptionsContraries = framework.contrariesOf(newCurrentlyDefendedAssumptions)
-
-    // unblocked pieces supporting contraries of curr def assumptions // TODO: this probably can be optimized, reuse what we had!
-    val initialStatementsSupportingContrariesOfCurrentlyDefendedAssumptions = remainingNonBlockedStatements intersect newCurrentlyDefendedAssumptionsContraries
-    val (newBUnblockedStatementsSupportingContrariesOfCurrentlyDefendedAssumptions, newBUnblockedRulesSupportingContrariesOfCurrentlyDefendedAssumptions) = dState.calculateBUnblockedPiecesSupportingStatementsInSet(initialStatementsSupportingContrariesOfCurrentlyDefendedAssumptions, Set.empty, remainingNonBlockedStatementsPossiblySupportingDefenceContraries, remainingNonBlockedRulesPossiblySupportingDefenceContraries)
-
-    val newCulpritCandidates = framework.assumptions intersect newBUnblockedStatementsSupportingDefenceContraries
-    val newCulpritCandidatesContraries = framework.contrariesOf(newCulpritCandidates)
-
-    DisputeState(
-      pStatements = dState.pStatements,
-      pRules = dState.pRules,
-      oStatements = dState.oStatements ++ rule.body,
-      oRules = dState.oRules + rule,
-      defences = dState.defences,
-      culprits = dState.culprits,
-      pRemainingNonBlockedRules = dState.pRemainingNonBlockedRules,
-      bRemainingNonBlockedRules = newBRemainingNonBlockedRules,
-      pPlayedUnexpandedStatements = dState.pPlayedCompleteStatements,
-      bFullyExpandedStatements = newBFullyExpandedStatements,
-      bPlayedBlockedStatements = newBPlayedBlockedStatements, // TODO: This should not change
-      bPlayedBlockedRules = newBPlayedBlockedRules,           // TODO: this as well
-      pPlayedCompleteStatements = dState.pPlayedCompleteStatements,
-      pPlayedCompleteRules = dState.pPlayedCompleteRules,
-      bUnblockedCompletePlayedStatements = newBUnblockedCompleteStatements,
-      bUnblockedCompletePlayedRules = newBUnblockedCompleteRules,
-      bUnblockedStatementsSupportingDefenceContraries = newBUnblockedStatementsSupportingDefenceContraries,
-      bUnblockedRulesSupportingDefenceContraries = newBUnblockedRulesSupportingDefenceContraries,
-      bUnblockedStatementsSupportingDefendedAssumptionsContraries = newBUnblockedStatementsSupportingContrariesOfCurrentlyDefendedAssumptions,
-      bUnblockedRulesSupportingDefendedAssumptionsContraries = newBUnblockedRulesSupportingContrariesOfCurrentlyDefendedAssumptions,
-      culpritCandidates = newCulpritCandidates,
-      currentlyDefendedAssumptions = newCurrentlyDefendedAssumptions,
-      defenceContraries = dState.defenceContraries,
-      culpritCandidatesContraries = newCulpritCandidatesContraries,
-      currentlyDefendedAssumptionsContraries = newCurrentlyDefendedAssumptionsContraries
-    )
-  }
+                   override val attacking: Option[Set[String]]) extends PotentialRuleMove with OpponentMove {
+  override val moveType: MoveType = OB1
 }
 
 

@@ -1,119 +1,186 @@
 package aba.reasoner
 
-import aba.framework.{Framework, Literal, Rule}
+import aba.framework.{Contrary, Framework, Rule}
 import aba.move.Move.MoveType
-import aba.reasoner.automatic.{PerformedAssumptionMove, PerformedMove2, PerformedRuleMove}
+
+case class MovePieces(newPRules: Set[Rule],
+                      newPStatements: Set[String],
+                      newORules: Set[Rule],
+                      newOStatements: Set[String],
+                      newDefences: Set[String],
+                      newCulprits: Set[String])
+
 
 trait PotentialMove2 {
   def moveType: MoveType
-  def attacking: Option[Set[String]]
-  def perform(implicit dState: DisputeState, framework: Framework): DisputeState
-  def toPerformedMove: PerformedMove2
-}
 
+  def attacking: Option[Set[String]] // TODO: will that be necessary?
+  def movePieces(implicit framework: Framework): MovePieces
+  def perform(implicit dState: DisputeState, framework: Framework): DisputeState = {
 
-abstract case class PotentialRuleMove(rule: Rule
-  //override val moveType: MoveType,
- //override val attacking: Option[Set[String]],
-) extends PotentialMove2 {
-  //  def rule: Rule
-  override def toPerformedMove: PerformedMove2 = PerformedRuleMove(moveType, rule)
-}
+      // TODO: somehow organize this
+      val mPieces = movePieces
 
-abstract case class PotentialAssumptionMove(assumption: String
-  //override val moveType: MoveType,
-  //override val attacking: Option[Set[String]],
-  //assumption: String
-) extends PotentialMove2 {
-  //  def assumption: String
-  override def toPerformedMove: PerformedMove2 = PerformedAssumptionMove(moveType, assumption)
-}
+      val pRules = dState.pRules ++ mPieces.newPRules
+      val pStatements = dState.pStatements ++ mPieces.newPStatements
 
+      val oRules = dState.oRules ++ mPieces.newORules
+      val oStatements = dState.oStatements ++ mPieces.newOStatements
 
+      val bRules = oRules ++ pRules
+      val bStatements = oStatements ++ pStatements // TODO: consider optimizing, depending on the move
 
+      //val (ruleBodyAssumptions, ruleBodyNonAssumptions) = rule.body.partition(st => framework.assumptions.contains(st))
+      //val newCulprits = framework.contraries.filter(ctr => rule.statements.contains(ctr.contrary)).map(_.assumption)
+      val culprits = dState.culprits ++ mPieces.newCulprits
+      val defences = dState.defences ++ mPieces.newDefences
+      val defencesContraries = framework.contrariesOf(defences)
 
-// TODO Here also sealed trait
-// TODO and cased clases ruleArg and assumptionArg
-case class PotentialMove(ruleArgument: Option[RuleArgument],
-                         // literalArgument: Option[LiteralArgument],
-                         assumptionArgument: Option[LiteralArgument],
-                         literalArguments: Set[LiteralArgument],
-                         moveType: MoveType,
-                         additionalInfo: Option[String],
-                         attacking: Option[Set[Literal]] = None) extends Ordered[PotentialMove] {
-  override def compare(that: PotentialMove): Int = this.moveType compare that.moveType
+      // move it all to functions
+      val pPlayedUnexpandedStatements = // checked
+        DisputeState.calculatePPlayedUnexpandedStatements(pStatements = pStatements, pRules = pRules)
 
-  def perform(implicit dState: DisputeState): DisputeState = {
+      val pRemainingNonBlockedRules = // checked
+        DisputeState.calculatePRemainingNonBlockedRules(pRemainingNonBlockedRules = dState.pRemainingNonBlockedRules, pRules = pRules, culprits = culprits, defencesContraries = defencesContraries, framework.constraints)
 
-    val totalArguments: Set[Argument] = ruleArgument match {
-      case Some(ruleArg) => literalArguments.toSet[Argument] + ruleArg
-      case None => literalArguments.toSet[Argument]   // TODO: do it better than toSet[Argument]
+      val bRemainingNonBlockedRules = // checked
+        DisputeState.calculateBRemainingNonBlockedRules(bRemainingNonBlockedRules = dState.bRemainingNonBlockedRules, bRules = bRules, culprits = culprits)
+
+      val bFullyExpandedStatements = // checked
+        DisputeState.calculateBFullyExpandedStatements(bRemainingNonBlockedRules = bRemainingNonBlockedRules, bStatements = bStatements)
+
+      val (bPlayedBlockedStatements, bPlayedBlockedRules) = // OK
+        DisputeState.calculateBPlayedBlockedPiecesRec(
+          blockedStatements = dState.bPlayedBlockedStatements ++ culprits, // OK
+          blockedRules = dState.bPlayedBlockedRules, // OK
+          bRemainingStatementsToCheck = (bFullyExpandedStatements -- dState.bPlayedBlockedStatements) -- framework.assumptions, // OK
+          bRemainingRulesToCheck = bRules -- dState.bPlayedBlockedRules) // OK
+
+     val (pPlayedCompleteStatements, pPlayedCompleteRules) = // OK
+        DisputeState.calculatePPlayedCompletePiecesRec(
+          pCompleteStatements = dState.pPlayedCompleteStatements ++ defences, // OK
+          pCompleteRules = dState.pPlayedCompleteRules, // OK
+          pRemainingRulesToCheck = pRules -- dState.pPlayedCompleteRules) // OK
+
+      val pStatementsFollowingFromPCompleteStatements = pRemainingNonBlockedRules.filter{
+        case Rule(_, head, body) => body.subsetOf(pPlayedCompleteStatements)
+      }.map(_.head)
+
+      val playedBNonBlockedStatements = bStatements -- bPlayedBlockedStatements
+      val playedBNonBlockedRules = bRules -- bPlayedBlockedRules
+
+      // unblocked complete pieces - TODO: again only if new culprits appear
+      val nonCulpritsPlayedAssumptions = DisputeState.calculateNonCulpritsPlayedAssumptions(bStatements, framework.assumptions, culprits)
+
+      val (bUnblockedCompletePlayedStatements, bUnblockedCompletePlayedRules) = // OK
+        DisputeState.calculateBUnblockedCompletePiecesRec(
+          bUnblockedCompleteStatements = nonCulpritsPlayedAssumptions ++ pPlayedCompleteStatements, // OK
+          bUnblockedCompleteRules = pPlayedCompleteRules, // OK
+          bRemainingStatementsToCheck = (playedBNonBlockedStatements -- pPlayedCompleteStatements) -- nonCulpritsPlayedAssumptions, // OK
+          bRemainingRulesToCheck = playedBNonBlockedRules -- pPlayedCompleteRules) // OK
+
+      // supporting defence contraries
+      val initialStatementsSupportingDefenceContraries = playedBNonBlockedStatements intersect defencesContraries
+      val (bUnblockedStatementsSupportingDefenceContraries,
+        bUnblockedRulesSupportingDefenceContraries) =
+          DisputeState.calculateBUnblockedPiecesSupportingStatementsInSet( // OK
+            bSupportingStatements = initialStatementsSupportingDefenceContraries, // OK
+            bSupportingRules = Set.empty, // OK
+            bRemainingStatements = playedBNonBlockedStatements -- initialStatementsSupportingDefenceContraries, // OK
+            bRemainingRules = playedBNonBlockedRules) // OK
+
+      // supporting defended assumptions contraries
+      val assumptionsAttackingDefences = framework.contraries.filter { case Contrary(assumption, _) => defences.contains(assumption) }.map(_.contrary) intersect framework.assumptions
+      val attackedByBUnblockedCompleteStatements = framework.contraries.filter(ctr => bUnblockedCompletePlayedStatements.contains(ctr.contrary)).map(_.assumption)
+      val currentlyDefendedAssumptions = framework.assumptions -- (culprits ++ attackedByBUnblockedCompleteStatements ++
+          framework.selfContradictingAssumptions ++ assumptionsAttackingDefences) // TODO: here check if not attacking defences / is self contradicting?
+      val currentlyDefendedAssumptionsContraries = framework.contrariesOf(currentlyDefendedAssumptions)
+
+      val initialStatementsSupportingDefendedAssumptionsContraries = playedBNonBlockedStatements intersect currentlyDefendedAssumptionsContraries
+      val (bUnblockedStatementsSupportingDefendedAssumptionsContraries,
+      bUnblockedRulesSupportingDefendedAssumptionsContraries) = DisputeState.calculateBUnblockedPiecesSupportingStatementsInSet(
+        bSupportingStatements = initialStatementsSupportingDefendedAssumptionsContraries,
+        bSupportingRules = Set.empty,
+        bRemainingStatements = playedBNonBlockedStatements -- initialStatementsSupportingDefendedAssumptionsContraries,
+        bRemainingRules = playedBNonBlockedRules)
+
+      val culpritCandidates = bUnblockedStatementsSupportingDefenceContraries intersect framework.assumptions
+      val culpritCandidatesContraries = framework.contrariesOf(culpritCandidates)
+
+      DisputeState(
+        pStatements = pStatements,
+        pRules = pRules,
+        oStatements = oStatements,
+        oRules = oRules,
+        defences = defences,
+        culprits = culprits,
+        pRemainingNonBlockedRules = pRemainingNonBlockedRules,
+        bRemainingNonBlockedRules = bRemainingNonBlockedRules,
+        pPlayedUnexpandedStatements = pPlayedUnexpandedStatements,
+        bFullyExpandedStatements = bFullyExpandedStatements,
+        bPlayedBlockedStatements = bPlayedBlockedStatements,
+        bPlayedBlockedRules = bPlayedBlockedRules,
+        pPlayedCompleteStatements = pPlayedCompleteStatements,
+        pPlayedCompleteRules = pPlayedCompleteRules,
+        bUnblockedCompletePlayedStatements = bUnblockedCompletePlayedStatements,
+        bUnblockedCompletePlayedRules = bUnblockedCompletePlayedRules,
+        bUnblockedStatementsSupportingDefenceContraries = bUnblockedStatementsSupportingDefenceContraries,
+        bUnblockedRulesSupportingDefenceContraries = bUnblockedRulesSupportingDefenceContraries,
+        bUnblockedStatementsSupportingDefendedAssumptionsContraries = bUnblockedStatementsSupportingDefendedAssumptionsContraries,
+        bUnblockedRulesSupportingDefendedAssumptionsContraries = bUnblockedRulesSupportingDefendedAssumptionsContraries,
+        culpritCandidates = culpritCandidates,
+        currentlyDefendedAssumptions = currentlyDefendedAssumptions,
+        defenceContraries = defencesContraries,
+        culpritCandidatesContraries = culpritCandidatesContraries,
+        currentlyDefendedAssumptionsContraries = currentlyDefendedAssumptionsContraries,
+        pStatementsFollowingFromPCompleteStatements = pStatementsFollowingFromPCompleteStatements
+      )
     }
 
-    val arg = (ruleArgument, assumptionArgument) match {
-      case (Some(_), Some(_)) => throw new IllegalArgumentException("Potential argument must either be literal or rule based.")
-      case (Some(ruleArg), None) => ruleArg
-      case (None, Some(litArg)) => litArg
-      case _ => throw new IllegalArgumentException("Potential argument must either be literal or rule based.")
-    }
+  def newPieces: (Set[Rule], Set[String])
+}
 
-    DisputeState(moveType, totalArguments, arg)
+
+trait PotentialRuleMove extends PotentialMove2 {
+  val rule: Rule
+
+  override def newPieces: (Set[Rule], Set[String]) = (Set(rule), rule.statements)
+  override def toString: String = s"$moveType: $rule"
+}
+
+trait PotentialAssumptionMove extends PotentialMove2 {
+  val assumption: String
+  override def newPieces: (Set[Rule], Set[String]) = (Set.empty, Set(assumption)) // TODO: Change to a class
+  override def toString: String = s"$moveType: $assumption"
+}
+
+
+trait ProponentMove extends PotentialMove2 {
+  override def movePieces(implicit framework: Framework): MovePieces = {
+    MovePieces(
+      newPRules = newPieces._1,
+      newPStatements =  newPieces._2,
+      newORules = Set.empty,
+      newOStatements = Set.empty,
+      newDefences = newPieces._2 intersect framework.assumptions,
+      newCulprits = framework.contraries.filter(ctr => newPieces._2.contains(ctr.contrary)).map(_.assumption)
+    )
   }
+}
 
-
-  override def toString: String = {
-
-    // TODO: remove?
-//    val additionalInfoStr = additionalInfo match {
-//      case Some(addInfo) => s" ($addInfo)"
-//      case _ => ""
-//    }
-
-//    val ruleArgStr = ruleArgument match {
-//      case Some(ruleArg) => s"Rule: $ruleArg"
-//      case _ => ""
-//    }
-
-    // TODO? previously was showing all literal arguments, probably just remove
-    //val litArgStr = if (literalArguments.isEmpty) "" else s"Literals: ${literalArguments.mkString(",")}"
-
-    //s"$moveType$additionalInfoStr: $ruleArgStr $litArgStr"
-
-    val info1 = (ruleArgument, assumptionArgument) match {
-      case (Some(_), Some(_)) => throw new IllegalArgumentException("Potential argument must either be literal or rule based.")
-      case (Some(ruleArg), None) => s"Rule: $ruleArg"
-      case (None, Some(litArg)) => s"Assumption: $litArg"
-      case _ => throw new IllegalArgumentException("Potential argument must either be literal or rule based.")
-    }
-    val info2 = attacking match {
-      case Some(asm: Set[Literal]) => s"""Attacking { ${asm.mkString(",")} }"""
-      case _ => ""
-    }
-
-    info1 + "\t\t" +  info2
-
+trait OpponentMove extends PotentialMove2 {
+  override def movePieces(implicit framework: Framework): MovePieces = {
+    MovePieces(
+      newPRules = Set.empty,
+      newPStatements = Set.empty,
+      newORules = newPieces._1,
+      newOStatements = newPieces._2,
+      newDefences = Set.empty,
+      newCulprits = Set.empty
+    )
   }
+}
 
-  // to compare in set between sets of potential arguments
-//  override def hashCode(): Int = (moveType.toString + this.toString).hashCode
-//
-//  override def equals(obj: Any): Boolean = {
-//    obj match {
-//      case PotentialMove(thatRuleArgOpt, thatAssArgOpt, _, thatMType, _) if thatMType == moveType => {
-//        thatRuleArgOpt match {
-//          case Some(thatRuleArg) => this.ruleArgument match {
-//            case Some(ruleArg) => thatRuleArg.equals(ruleArg)
-//            case _ => false
-//          }
-//          case None => thatAssArgOpt match {
-//            case Some(thatAssArg) => this.assumptionArgument match {
-//              case Some(assArg) => thatAssArg.equals(assArg)
-//              case _ => false
-//            }
-//          }
-//        }
-//      }
-//      case _ => false
-//    }
-//  }
+trait NonAttackingMove extends PotentialMove2 {
+  override val attacking: Option[Set[String]] = None
 }

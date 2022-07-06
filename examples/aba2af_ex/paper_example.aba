@@ -1,0 +1,22 @@
+% Assumptions
+a.
+b.
+c.
+d.
+
+% Contraries
+a:t.
+b:r.
+c:t.
+d:c.
+
+% myRules
+p:-q.
+q:-a.
+r:-p.
+t:-b.
+t:-p,s.
+t:-q,u,d.
+
+%G
+?p.

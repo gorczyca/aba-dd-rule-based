@@ -1,0 +1,24 @@
+%A
+w1.
+w2.
+w3.
+
+%Contraries
+w1:xW1.
+w2:xW2.
+w3:xW3.
+
+yes:-w1.
+xW1:-xYes.
+
+yes:-w2.
+xW2:-xYes.
+
+no:-w3.
+xW3:-xNo.
+
+xYes:-no.
+xNo:-yes.
+
+% goals
+?yes.

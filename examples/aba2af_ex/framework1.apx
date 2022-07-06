@@ -1,0 +1,22 @@
+%A
+myAsm(a).
+myAsm(b).
+myAsm(c).
+myAsm(d).
+myAsm(e).
+myAsm(f).
+
+%C
+contrary(a, x1).
+contrary(b, y1).
+contrary(c, z2).
+
+%R
+myRule(x, []).
+myRule(y, [b]).
+myRule(z, [a,c]).
+
+%Q
+query(x).
+query(y).
+query(c).

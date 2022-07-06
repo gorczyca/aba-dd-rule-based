@@ -1,0 +1,52 @@
+% assumptions
+% a, b, c, d, e, f, g, h, i
+
+% statements
+% p, q, r, s, t, u, v, x, y, z
+
+
+% assumptions
+a.
+b.
+c.
+d.
+
+e.
+f.
+g.
+i.
+h.
+
+% contraries
+a:xa.
+b:xb.
+c:xc.
+d:xd.
+e:xe.
+f:xf.
+g:xg.
+i:xi.
+h:xh.
+
+
+% rules
+p:-a,b,q.
+q:-xe,r.
+q:-i.
+r:-c.
+r:-d.
+xe:-c.
+xf:-xe.
+
+xi:-g.
+xa:-e,v.
+xa:-z.
+v:-h.
+v:-i.
+z:-f.
+
+
+
+
+
+?p.

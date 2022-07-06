@@ -1,0 +1,82 @@
+%A
+
+asm(w2TypeRoad).
+asm(w3FrameRugged).
+asm(w4WheelsSkinny).
+asm(w7FrameStepthrough).
+
+
+asm(norSuspensionTypeRoad).
+
+
+asm(norTypeCity1).
+asm(norFrameStepthrough).
+
+%Contraries
+
+
+contrary(w6TypeMountain,xTypeMountain).
+
+contrary(norTypeMountainSuspension,xSuspension).
+contrary(norFrameStepthrough,xFrameLightweight).
+
+
+% Rules
+
+%
+% Witnesses
+%
+
+rule(handlebarElevated,[w1HandlebarElevated]).
+rule(typeRoad,[w2TypeRoad]).
+
+%
+% Rules for typeCity
+%
+
+rule(typeCity,[frameLightweight,handlebarElevated,norTypeCity1]).
+rule(wheelsSkinny,[typeCity]).
+rule(xTypeCity,[xWheelsSkinny]).
+
+%
+% Rules for typeRoad
+%
+
+rule(typeRoad,[frameLightweight,handlebarDropped,norTypeRoad]).
+rule(wheelsSkinny,[typeRoad]).
+rule(xTypeRoad,[xWheelsSkinny]).
+
+
+%
+% Rules for typeTouring
+%
+
+rule(xTypeTouring,[xFrameLightweight]).
+rule(xFrameStepthrough,[typeTouring]).
+rule(xTypeTouring,[xWheelsSkinny]).
+
+%
+% Rules for frames
+%
+
+rule(xFrameRugged,[frameLightweight]).
+rule(xFrameStepthrough,[xFrameLightweight]).
+
+
+%
+% Extra rules for negation
+%
+
+rule(xTypeMountain,[typeRoad]).
+rule(xTypeTouring,[typeRoad]).
+rule(xTypeTouring,[typeCity]).
+
+
+
+%
+% GOALS
+%
+
+goal(xWheelsWide).
+
+

@@ -1,45 +1,43 @@
 package aba.reasoner.argumentBased2
 
-import aba.framework.{Framework, Literal, Rule}
+import aba.framework.{Contrary, Framework, Literal, Rule}
 
 import java.util.UUID
 import scala.annotation.tailrec
 
 
 object ArgumentNode {
-  def newUuid: String = UUID.randomUUID().toString.replace('-', '_')
-
   def apply(): ArgumentNode = {
-    new ArgumentNode(Literal("FACT"), Set.empty[ArgumentNode], factNode=true, uuid = newUuid)
+    new ArgumentNode("FACT", Set.empty[ArgumentNode], factNode=true)
   }
 
-  def apply(lit: Literal): ArgumentNode = {
-    new ArgumentNode(lit, Set.empty[ArgumentNode], uuid = newUuid)
+  def apply(stmt: String): ArgumentNode = {
+    new ArgumentNode(stmt, Set.empty[ArgumentNode])
   }
 
-  def apply(lit: Literal, children: Set[ArgumentNode]): ArgumentNode = {
-    new ArgumentNode(lit, children, uuid = newUuid)
+  def apply(stmt: String, children: Set[ArgumentNode]): ArgumentNode = {
+    new ArgumentNode(stmt, children)
   }
 
   def apply(copyFrom: ArgumentNode, children: Set[ArgumentNode]): ArgumentNode = {
-    new ArgumentNode(copyFrom.data, children, factNode = copyFrom.factNode, uuid = newUuid)
+    new ArgumentNode(copyFrom.statement, children, factNode = copyFrom.factNode)
   }
 
 }
 
 
-class ArgumentNode(val data: Literal,
-                        val children: Set[ArgumentNode],
-                        val factNode: Boolean = false,
-                        val uuid: String) {
+class ArgumentNode(val statement: String,
+                   val children: Set[ArgumentNode],
+                   val factNode: Boolean = false) {
 
   // TODO: this better, with the UUIDs
 
+  val uuid: String = UUID.randomUUID().toString.replace('-', '_')
 
 
-  override def toString: String = if (children.isEmpty) s"$data" else s"$data ← [${children.map(_.toString).mkString(",")}]"
+  override def toString: String = if (children.isEmpty) s"$statement" else s"$statement ← [${children.map(_.toString).mkString(",")}]"
 
-  def uid: String = s"arg_node_${data}_$uuid"
+  def uid: String = s"arg_node_${statement}_$uuid"
 
   def flattenTree: Seq[ArgumentNode] = {
    children.map(_.flattenTree).toSeq.flatten :+ this
@@ -83,13 +81,13 @@ class ArgumentNode(val data: Literal,
 
 
       val nonEndpointsChildren = this.children -- endpointsSet
-      val endpointsChildren = this.children.intersect(endpointsSet).map(argNode => ArgumentNode(argNode.data, childrenMap(argNode))) //argNode => ArgumentNode(argNode.data, endpointsMap(argNode)._2, None)) // should be exactly one always
+      val endpointsChildren = this.children.intersect(endpointsSet).map(argNode => ArgumentNode(argNode.statement, childrenMap(argNode))) //argNode => ArgumentNode(argNode.data, endpointsMap(argNode)._2, None)) // should be exactly one always
 //      val newChildren = nonEndpointsChildren.map(_.deepCopy1(childrenMap)) union endpointsChildren
       if (nonEndpointsChildren.nonEmpty) {
         val (newChildren, newEndpoints) = nonEndpointsChildren.map(_.deepCopy1(childrenMap, currentEndpoints)).unzip
-        (ArgumentNode(this.data, newChildren union endpointsChildren), newEndpoints.flatten.toMap)
+        (ArgumentNode(this.statement, newChildren union endpointsChildren), newEndpoints.flatten.toMap)
       } else {
-        (ArgumentNode(this.data, endpointsChildren), currentEndpoints)
+        (ArgumentNode(this.statement, endpointsChildren), currentEndpoints)
       }
 
 
@@ -109,26 +107,26 @@ class ArgumentNode(val data: Literal,
         return (argumentNode, endpoints, false) // todo: notify that it is finished - but it is only one branch that is finished - not enough
       }
 
-      val circularities = endpoints.filter { case (argNode, rules) => rules.exists(_.head == argNode.data) }
+      val circularities = endpoints.filter { case (argNode, rules) => rules.exists(_.head == argNode.statement) }
       if (circularities.nonEmpty) {
         (argumentNode, circularities, true) // todo: notify that circular
         // TODO: tutaj jest cos nie tak
       } else {
         // if no circularities
         // check if one can further extend using rules already used in this argument
-        val expandableEndpoints = endpoints.keySet.filter(argNode => rulesUsedGlobally.exists(_.head == argNode.data))
+        val expandableEndpoints = endpoints.keySet.filter(argNode => rulesUsedGlobally.exists(_.head == argNode.statement))
         if (expandableEndpoints.isEmpty) {
           // cannot further expand, return what you have
           (argumentNode, endpoints, false)
         } else {
           // there can be many with many rules. Do it one by one
-          val endpointLit = expandableEndpoints.head.data
+          val endpointLit = expandableEndpoints.head.statement
           // there should be EXACTLY 1 rule
 
           // TODO: tu zapewne brakuje case'a ze regula ma puste body
 
           val ruleToUse = rulesUsedGlobally.filter(_.head == endpointLit).head
-          val relevantEndpoints = endpoints.filter(_._1.data == endpointLit)
+          val relevantEndpoints = endpoints.filter(_._1.statement == endpointLit)
           // TODO: to zmienilem
           val remainingEndpoints = endpoints -- relevantEndpoints.keySet
 
@@ -139,7 +137,7 @@ class ArgumentNode(val data: Literal,
             // currentEndpoint -> (rulesUsed, newEndpointsSet)
             val endpointsNewRulesUsedNewEndpointsMap = relevantEndpoints.map { case (argNode, rules) => argNode -> (rules + ruleToUse, ruleToUse.body.map(lit => ArgumentNode(lit))) }
             // filter out assumptions, so that they are not endpoints
-            val nonAssumptionsEndpointsMap = endpointsNewRulesUsedNewEndpointsMap.map { case (argNode, (rules, endpoints)) => argNode -> (rules, endpoints.filter(node => !framework.assumptions.contains(node.data))) }
+            val nonAssumptionsEndpointsMap = endpointsNewRulesUsedNewEndpointsMap.map { case (argNode, (rules, endpoints)) => argNode -> (rules, endpoints.filter(node => !framework.assumptions.contains(node.statement))) }
             // remove entries with no endpoints
             val flattenedNonAssumptionsEndpointsMap = nonAssumptionsEndpointsMap.filter { case (_, (_, endpoints)) => endpoints.nonEmpty }
 
@@ -182,8 +180,9 @@ object ArgumentTree {
             rules: Set[Rule],
             isComplete: Boolean,
             isCircular: Boolean,
+            isConflicted: Boolean,
             circularArgs: Option[Set[ArgumentNode]]): ArgumentTree = {
-    new ArgumentTree(root, endpoints, rules, isComplete=isComplete, isCircular=isCircular, circularArgs=circularArgs, uuid=newUuid)
+    new ArgumentTree(root, endpoints, rules, isComplete=isComplete, isCircular=isCircular, isConflicted=isConflicted, circularArgs=circularArgs, uuid=newUuid)
   }
 
   def newUuid: String = UUID.randomUUID().toString.replace('-', '_')
@@ -196,22 +195,30 @@ class ArgumentTree(val root: ArgumentNode,
                    val rulesUsed: Set[Rule],
                    val isComplete: Boolean = false,
                    val isCircular: Boolean = false,
+                   val isConflicted: Boolean = false,
                    val circularArgs: Option[Set[ArgumentNode]] = None,
                    val uuid: String) {
 
 
 
 //  override def toString: String = s"${root.toString}\nENDPOINTS:\n${endpoints.map{ case (argNode, rules) => s"${argNode.data}: {${rules.mkString(",")}}" }}\nuid"
-  override def toString: String = s"${root.toString}\nENDPOINTS:\n${endpoints.map{ case (argNode, rules) => s"${argNode.data}: {${rules.mkString(",")}}" }}"
+  override def toString: String = root.toString
+  //override def toString: String = s"${root.toString}\nENDPOINTS:\n${endpoints.map{ case (argNode, rules) => s"${argNode.statement}: {${rules.mkString(",")}}" }}"
 
 //  def uid: String = s"argument_${root.data}_${ if (hashCode() < 0) "an" + Math.abs(hashCode()).toString else "a" + hashCode().toString }"
-  def uid: String = s"argument_${root.data}_$uuid"
+  def uid: String = s"argument_${root.statement}_$uuid"
 
 
   def dCopy(rule: Rule)(implicit framework: Framework): ArgumentTree = {
-    val relevantEndpoints = this.endpoints.filter(_._1.data == rule.head) // take all endpoints with head as current rule
+    val relevantEndpoints = this.endpoints.filter(_._1.statement == rule.head) // take all endpoints with head as current rule
     val rulesUsedGlobally = rulesUsed + rule // expand set of ALL rules
     val remainingEndpoints = this.endpoints -- relevantEndpoints.keySet
+
+    val assumptionsUsed = rulesUsedGlobally.flatMap(_.body) intersect framework.assumptions
+    val statementsUsed = rulesUsedGlobally.flatMap(_.statements)
+    val attackedAssumptions = framework.contraries.filter { case Contrary(_, contrary) => statementsUsed.contains(contrary) }.map(_.assumption)
+
+    val isConflicted = (assumptionsUsed intersect attackedAssumptions).nonEmpty
 
     if (rule.body.nonEmpty) {
       // if there is body
@@ -226,11 +233,11 @@ class ArgumentTree(val root: ArgumentNode,
       val endpointsNewRulesUsedNewEndpointsMap = relevantEndpoints.map { case (argNode, rules) => argNode -> (rules + rule, rule.body.map(lit => ArgumentNode(lit))) }
 
       // currendEndpoint -> newChildren that are assumptions
-      val assumptionChildrenNodes = endpointsNewRulesUsedNewEndpointsMap.map { case (argNode, (_, endpoints)) => argNode -> endpoints.filter(node => framework.assumptions.contains(node.data)) }
+      val assumptionChildrenNodes = endpointsNewRulesUsedNewEndpointsMap.map { case (argNode, (_, endpoints)) => argNode -> endpoints.filter(node => framework.assumptions.contains(node.statement)) }
       // TODO: filter out empty for clarity
 
       // currentEndpoint -> (rulesUsed, newEndpointsWithoutAssumptions)
-      val nonAssumptionsEndpointsMap = endpointsNewRulesUsedNewEndpointsMap.map { case (argNode, (rules, endpoints)) => argNode -> (rules, endpoints.filter(node => !framework.assumptions.contains(node.data))) }
+      val nonAssumptionsEndpointsMap = endpointsNewRulesUsedNewEndpointsMap.map { case (argNode, (rules, endpoints)) => argNode -> (rules, endpoints.filter(node => !framework.assumptions.contains(node.statement))) }
       // remove those that have ONLY assumptions - leave TRUE endpoints
       val flattenedNonAssumptionsEndpointsMap = nonAssumptionsEndpointsMap.filter { case (_, (_, endpoints)) => endpoints.nonEmpty }
 
@@ -262,7 +269,7 @@ class ArgumentTree(val root: ArgumentNode,
 
       val (newRoot,actualNewEndpoints2) = root.deepCopy1(childrenWithAssumptionsMap, actualNewEndpoints)
 
-      ArgumentTree(newRoot, actualNewEndpoints2, rulesUsedGlobally, isCircular = isCircular, isComplete = isComplete,
+      ArgumentTree(newRoot, actualNewEndpoints2, rulesUsedGlobally, isCircular = isCircular, isComplete = isComplete,  isConflicted=isConflicted,
         circularArgs = circularArgsOption)
     } else {
       // if empty body
@@ -270,7 +277,7 @@ class ArgumentTree(val root: ArgumentNode,
       val isComplete = remainingEndpoints.isEmpty
 
       val (newRoot, newEndpoints) = root.deepCopy1(childrenMap, remainingEndpoints)
-      ArgumentTree(newRoot, newEndpoints, rulesUsedGlobally, isComplete = isComplete, isCircular=false, circularArgs=None)
+      ArgumentTree(newRoot, newEndpoints, rulesUsedGlobally, isComplete = isComplete, isCircular=false, isConflicted=isConflicted, circularArgs=None)
 
     }
 

@@ -1,9 +1,9 @@
 package aba.move
 
 import aba.framework.Framework
-import aba.reasoner.{DisputeState, LiteralArgument, PotentialMove}
-import aba.move.DisputeAdvancement.{DAB, DC, DF, DS}
-import aba.move.Move.MoveType
+import aba.reasoner.{DisputeState, PotentialMove2}
+import aba.move.DisputeAdvancement.{DAB, DC, DF, DS, DABF, DisputeAdvancementType}
+import aba.move.Move.{MoveType, OB1, OB2, OF1, OF2, PB1, PB2, PF1, PF2}
 import aba.move.TerminationCriteria.{TC, TS}
 
 object TerminationCriteria extends Enumeration {
@@ -21,101 +21,213 @@ object TerminationCriteria extends Enumeration {
   }
 
   // TODO change to val
-  def proponentSeemsToBeWinning(implicit framework: Framework, dState: DisputeState): Boolean = {
-    val culpritContraries = framework.contrariesOf(dState.culprits)
+  def proponentSeemsToBeWinning(implicit framework: Framework, dState: DisputeState, tCriteria: TerminationCriteriaType): Boolean = {
+    val culpritContraries = framework.contrariesOf(dState.culprits) // TODO: keep this in dState
 
+    // TODO lazy
     val condition1 = (dState.defenceContraries intersect dState.bUnblockedCompletePlayedStatements).isEmpty
     val condition2 = (framework.goals union culpritContraries).subsetOf(dState.pPlayedCompleteStatements)
 
-    condition1 && condition2
-  }
-
-  def opponentSeemsToBeWinning(implicit framework: Framework, dState: DisputeState): Boolean = !proponentSeemsToBeWinning
-
-  def checkIfOver(terminationCriteriaType: TerminationCriteriaType)(implicit framework: Framework, dState: DisputeState): Option[Boolean] = {
-
-//    val (dabOpponentMoves, dabProponentMoves) = DisputeAdvancement(DAB).getPossibleMoves.partition(_._1.isOpponentsMove)
-//    val (dfOpponentMoves, dfProponentMoves) = DisputeAdvancement(DF).getPossibleMoves.partition(_._1.isOpponentsMove)
-//    val (dcOpponentMoves, dcProponentMoves) = DisputeAdvancement(DC).getPossibleMoves.partition(_._1.isOpponentsMove)
-//    val (_, dsProponentMoves) = DisputeAdvancement(DS).getPossibleMoves.partition(_._1.isOpponentsMove)
-
-    val Seq((dabOpponentMoves, dabProponentMoves),
-            (dfOpponentMoves, dfProponentMoves),
-            (_, dcProponentMoves),
-            (_, dsProponentMoves))
-      = Seq(DisputeAdvancement(DAB),
-            DisputeAdvancement(DF),
-            DisputeAdvancement(DC),
-            DisputeAdvancement(DS))
-      .map(_.getPossibleMoves.partition(_._1.isOpponentsMove))
-
-    val propSeemsWin = proponentSeemsToBeWinning
-    val oppSeemsWin = opponentSeemsToBeWinning
-
-    val additionalTCCondition = (dState.currentlyDefendedAssumptions -- dState.defences).isEmpty
-    val additionalTSCondition = framework.assumptions == (dState.defences ++ dState.culprits)
-
-    val (propCondBool, oppCondBool) = terminationCriteriaType match {
-      case TA => (
-        // prop condition
-        propSeemsWin &&
-          (dabOpponentMoves.forall(_._2.isEmpty) || dfOpponentMoves.filter(_._1.isForwardMove).forall(_._2.isEmpty)),
-        // opp condition
-        oppSeemsWin &&
-          (dabProponentMoves.forall(_._2.isEmpty) || dfProponentMoves.filter(_._1.isForwardMove).forall(_._2.isEmpty))
-      )
-      case TC => (
-        // prop condition
-        propSeemsWin && additionalTCCondition &&
-          (dabOpponentMoves.forall(_._2.isEmpty) || dfOpponentMoves.filter(_._1.isForwardMove).forall(_._2.isEmpty)),
-        // opp condition
-        oppSeemsWin || !additionalTCCondition &&
-          (dcProponentMoves.forall(_._2.isEmpty) || dfProponentMoves.filter(_._1.isForwardMove).forall(_._2.isEmpty) )
-      )
-      case TS => (
-        // prop condition
-        propSeemsWin && additionalTSCondition &&
-          (dabOpponentMoves.forall(_._2.isEmpty) || dfOpponentMoves.filter(_._1.isForwardMove).forall(_._2.isEmpty)),
-        // opp condition
-        oppSeemsWin || !additionalTSCondition &&
-          dsProponentMoves.forall(_._2.isEmpty)
-      )
+    val additionalCondition = tCriteria match {
+                                                                                        // TODO: do i need that?
+                                                                                     // todo: better check that, because these can be ignored
+                                                                                      // TODO: but here do not check moves possible but rather if
+                                                                                      //  all statements derivable are contained
+      //case TC => (dState.currentlyDefendedAssumptions -- dState.defences).isEmpty && Move(PF1).isPossible(DC).isEmpty
+      case TC => (dState.currentlyDefendedAssumptions -- dState.defences).isEmpty && (dState.pStatementsFollowingFromPCompleteStatements -- dState.pStatements).isEmpty
+      case TS => framework.assumptions == (dState.defences ++ dState.culprits)
+      case _ => true
     }
 
-    if(propCondBool) Some(true)
-    else if (oppCondBool) Some(false)
+    condition1 && condition2 && additionalCondition
+  }
+
+  private val terminationCriteriaAdvancementTypeMap = Map(
+    TA -> Seq(DAB, DABF),
+    TC -> Seq(DC),
+    TS -> Seq(DS)
+  )
+
+  private def getTerminationCriteriaPossibleMoves(dAdvancementType: DisputeAdvancementType,
+                                                    terminationCriteria: TerminationCriteriaType)
+                                                   (implicit possibleMoves: Map[MoveType, Seq[PotentialMove2]],
+                                                    framework: Framework,
+                                                    dState: DisputeState): Map[MoveType, Seq[PotentialMove2]] = {
+
+    if (terminationCriteriaAdvancementTypeMap(terminationCriteria).contains(dAdvancementType)) possibleMoves
+    else {
+      val tCriteriaAdvancement = terminationCriteriaAdvancementTypeMap(terminationCriteria).head
+      DisputeAdvancement(tCriteriaAdvancement).getPossibleMoves
+    }
+
+  }
+
+  private def checkIfOverTA(possibleMoves: Map[MoveType, Seq[PotentialMove2]],
+                            dFMoves: Map[MoveType, Seq[PotentialMove2]],
+                            propSeemsWin: Boolean): Option[Boolean] = {
+
+    // TODO: lazy
+
+    // proponent cannot move
+    // prop possible moves
+    val possiblePropMoveTypes = Seq(PB1, PB2, PF2)  // filter.(...).isEmpty = !(...).exists
+    val possibleMovePropCantMove = !possibleMoves.exists { case (mType, _) => possiblePropMoveTypes.contains(mType) }
+    // prop df moves
+    val dfPropMoveTypes = Seq(PF1, PF2)
+    val dfMovesPropCantMove = !dFMoves.exists { case (mType, _) => dfPropMoveTypes.contains(mType) }
+
+    // opponent cannot move
+    // opp possible moves
+    val possibleOppMoveTypes = Seq(OB1, OB2, OF2)
+    val possibleMovesOppCantMove = !possibleMoves.exists { case (mType, _) => possibleOppMoveTypes.contains(mType) }
+    // opp df moves
+    val dfOppMoveTypes = Seq(OF1, OF2)
+    val dfMovesOppCantMove = !dFMoves.exists { case (mType, _) => dfOppMoveTypes.contains(mType) }
+
+    val isTAOver = true
+
+    if (isTAOver && propSeemsWin && (possibleMovesOppCantMove || dfMovesOppCantMove)) Some(true)
+    else if (isTAOver && !propSeemsWin && (possibleMovePropCantMove || dfMovesPropCantMove)) Some(false)
     else None
   }
 
 
-//  def seemsToBeWinningDebug(implicit dState: DisputeState, framework: Framework): Unit = {
+  private def checkIfOverTC(possibleMoves: Map[MoveType, Seq[PotentialMove2]],
+                            dFMoves: Map[MoveType, Seq[PotentialMove2]],
+                            propSeemsWin: Boolean): Option[Boolean] = {
+
+    // TODO: lazy
+
+    // proponent cannot move
+    // prop possible moves
+    val possibleMovePropCantMove = !possibleMoves.exists { case (mType, _) => mType.isProponentMove }
+    // prop df moves
+    val dfPropMoveTypes = Seq(PF1, PF2)
+    val dfMovesPropCantMove = !dFMoves.exists { case (mType, _) => dfPropMoveTypes.contains(mType) }
+
+    // opponent cannot move
+    // opp possible moves
+    val possibleOppMoveTypes = Seq(OB1, OB2, OF2)
+    val possibleMovesOppCantMove = !possibleMoves.exists { case (mType, _) => possibleOppMoveTypes.contains(mType) }
+    // opp df moves
+    val dfOppMoveTypes = Seq(OF1, OF2)
+    val dfMovesOppCantMove = !dFMoves.exists { case (mType, _) => dfOppMoveTypes.contains(mType) }
+
+    // additional TC condition
+    //val isTCOver = possibleMoves.isEmpty
+    //val isTCOver = true
+
+    // TODO: if this is necessary then possibleMoves(..) is not anymore
+    //val isTCOver = !possibleMoves.exists { case (mType, _) => Seq(PF1, OF1).contains(mType) }
+
+    //val cannotMovePf1 = !possibleMoves.exists { case (mType, _) => mType == PF1 }
+
+    // additional move for the opponent,
+    val opponentCannotMove = !possibleMoves.exists { case (mType, _) => mType.isOpponentsMove }
+    //val opponentCannotMove = true
+
+
+    //val fullyExpandedIncomplete = disputeState.bFullyExpandedStatements -- disputeState.bUnblockedCompletePlayedStatements
+    //val propDoesntDefend = (disputeState.currentlyDefendedAssumptions -- disputeState.defences).exists(a => framework.contrariesOf(a).intersect(fullyExpandedIncomplete).nonEmpty)
+
+    if (propSeemsWin && (possibleMovesOppCantMove || dfMovesOppCantMove)) Some(true)
+    else if (!propSeemsWin && opponentCannotMove && (possibleMovePropCantMove || dfMovesPropCantMove)) Some(false)
+    else None
+  }
+
+
+  private def checkIfOverTS(possibleMoves: Map[MoveType, Seq[PotentialMove2]],
+                            dFMoves: Map[MoveType, Seq[PotentialMove2]],
+                            propSeemsWin: Boolean): Option[Boolean] = {
+
+    // TODO: lazy
+
+    // proponent cannot move
+    // prop possible moves
+    val possibleMovePropCantMove = !possibleMoves.exists { case (mType, _) => mType.isProponentMove }
+    // prop df moves
+
+    // opponent cannot move
+    // opp possible moves
+    val possibleOppMoveTypes = Seq(OB1, OB2, OF2)
+    val possibleMovesOppCantMove = !possibleMoves.exists { case (mType, _) => possibleOppMoveTypes.contains(mType) }
+    // opp df moves
+    val dfOppMoveTypes = Seq(OF1, OF2)
+    val dfMovesOppCantMove = !dFMoves.exists { case (mType, _) => dfOppMoveTypes.contains(mType) }
+
+    if (propSeemsWin && (possibleMovesOppCantMove || dfMovesOppCantMove)) Some(true)
+    else if (!propSeemsWin && possibleMovePropCantMove) Some(false)
+    else None
+  }
+
+
+  def checkIfOver(dAdvancementType: DisputeAdvancementType,
+                  terminationCriteriaType: TerminationCriteriaType,
+                  filterMoves: PotentialMove2 => Boolean = _ => true)
+                 (implicit framework: Framework,
+                  dState: DisputeState,
+                  currentlyPossibleMoves: Map[MoveType, Seq[PotentialMove2]]): Option[Boolean] = {
+
+    // TODO: reuse currentlyPossibleMoves?
+
+    val possibleMoves = getTerminationCriteriaPossibleMoves(dAdvancementType, terminationCriteriaType)
+      .map { case(mType, moves) => (mType, moves.filter(filterMoves)) }.filter { case (_, moves) => moves.nonEmpty }
+
+    // TODO: also filter here
+    val dFMoves = DisputeAdvancement(DF).getPossibleMoves // todo: do I also have to filter here? TODO: think about it
+      .map { case(mType, moves) => (mType, moves.filter(filterMoves)) }.filter { case (_, moves) => moves.nonEmpty }
+
+    val propSeemsWin = proponentSeemsToBeWinning(framework, dState, terminationCriteriaType)
+
+    terminationCriteriaType match {
+      case TA => checkIfOverTA(possibleMoves, dFMoves, propSeemsWin)
+      case TC => checkIfOverTC(possibleMoves, dFMoves, propSeemsWin) // TODO: do it smoother
+      case TS => checkIfOverTS(possibleMoves, dFMoves, propSeemsWin)
+    }
+
 //
-//    val unblockedCompletePlayedPiecesLit = framework.unblockedCompletePlayedPiecesB.collect { case litArg: LiteralArgument => litArg.lit }
-//    val completeArgsPLit = framework.completePiecesP.collect { case litArg: LiteralArgument => litArg.lit }
+//    val terminationConditionAdvancementTypeMap = Map(
+//      TA -> DAB,
+//      TC -> DC,
+//      TS -> DS
+//    )
 //
-//    val defencesContraries = framework.contrariesOf(framework.defences)
-//    val condition1 = (framework.contrariesOf(framework.defences) intersect unblockedCompletePlayedPiecesLit).isEmpty
-//    println(s"Condition 1: ${if (condition1) "TRUE" else "FALSE" }")
-//    println(s"(DefencesContraries INTERSECT UnblockedCompletePlayedPieces) is empty?")
-//    println(s"(${defencesContraries.mkString(", ")} INTERSECT ${unblockedCompletePlayedPiecesLit.mkString(", ")}) is empty?")
+//    // TODO: add lazy here
+//
+//    val propSeemsWin = proponentSeemsToBeWinning(framework, dState, terminationCriteriaType)
+//    val oppSeemsWin = !propSeemsWin
+//
+//    val advancementType = terminationConditionAdvancementTypeMap(terminationCriteriaType)
+//
+//    val opponentsConditionsMoves = List(OB1, OB2, OF2).flatMap(mType => Move(mType).isPossible(advancementType)).forall(filterMoves)
+//    val proponentConditionMoves = List(PB1, PB2, PF2).flatMap(mType => Move(mType).isPossible(advancementType)).forall(filterMoves)
 //
 //
-//    val culpritContraries = framework.contrariesOf(framework.culprits)
-//    val condition2 = (framework.goals union culpritContraries).subsetOf(completeArgsPLit)
-//    println(s"Condition 2: ${if (condition2) "TRUE" else "FALSE" }")
-//    println(s"((Goals UNION CulpritContraries) SUBSETOF CompletePArgs)")
-//    println(s"(${framework.goals.mkString(", ")} UNION ${culpritContraries.mkString(", ")}) SUBSETOF ${completeArgsPLit.mkString(", ")})")
+////    val (propTCCond, oppTCCond) = if (terminationCriteriaType == TC) {
+////      (Move(PF1).isPossible(DC).isEmpty,
+////      Move(OB2).isPossible(DC).isEmpty)
+////    } else (true, true)
 //
-//    val conditionComplete = (framework.j -- framework.defences).isEmpty
-//    println(s"Condition 'Complete': ${if (conditionComplete) "TRUE" else "FALSE" }")
-//    println(s"((J \\ Defences) is empty?)")
-//    println(s"({${framework.j.mkString(", ")}} \\ {${framework.defences.mkString(", ")}} is empty?)")
-//    println(s"Left: (${(framework.j -- framework.defences).mkString(", ")})")
+//    val tcCond = if (terminationCriteriaType == TC) {
+//      !anyMovePossible
+//    } else true
 //
-//    val conditionStable = (framework.defences ++ framework.culprits) == framework.assumptions
-//    println(s"Condition 'Stable': ${if (conditionStable) "TRUE" else "FALSE" }")
-//    println(s"((Defences UNION Culprits) == Assumptions)")
-//    println(s"Left: (${(framework.assumptions -- (framework.defences ++ framework.culprits)).mkString(", ")})")
+//    val opponentsAdditionalConditionsMoves = List(OF1, OF2).flatMap(mType => Move(mType).isPossible(DF)).forall(filterMoves)
+//    val proponentsAdditionalConditionsMoves = List(PF1, PF2).flatMap(mType => Move(mType).isPossible(DF)).forall(filterMoves)
 //
-//  }
+//    // TODO: temporary
+//    val tsCond = if (terminationCriteriaType == TS) {
+//      List(PF1, PF2, PB1, PB2).flatMap(mType => Move(mType).isPossible(DS)).forall(filterMoves)
+//    } else false
+//
+//    // TODO: temporary
+//    // TODO: most likely here are errors!!!
+//
+//
+//    // TODO:
+//    if (propSeemsWin && tcCond && (opponentsConditionsMoves || opponentsAdditionalConditionsMoves)) Some(true)
+//    else if (oppSeemsWin && tcCond && tsCond && (proponentConditionMoves || proponentsAdditionalConditionsMoves)) Some(false)
+//    else None
+  }
+
 }

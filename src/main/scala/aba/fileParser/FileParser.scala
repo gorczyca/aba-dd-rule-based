@@ -35,7 +35,7 @@ abstract class FileParser extends RegexParsers{
 
 
   def parseFile(fileName: String): Try[Framework] = {
-    Using(Source.fromFile(fileName)) {
+    Using(Source.fromFile(fileName, enc="UTF-8")) {
       source => {
 
         val parsedObjects = source.getLines.map(parseAll(rule | contrary | assumption | constraint | goal | comment, _) match {
@@ -54,6 +54,10 @@ abstract class FileParser extends RegexParsers{
         val actualGoals = goals.map(_.id)
         val actualConstraints = constraints.map(_.id)
 
+        // self contradicting assumptions
+
+
+
 
         new Framework(rules, actualAssumptions, contraries, actualGoals, actualConstraints, alphabet.keys.toSet)
 
@@ -63,16 +67,18 @@ abstract class FileParser extends RegexParsers{
 }
 
 object FileParser {
-  def apply(parserType: String, filePath: String): Framework = {
+  def apply(parserType: String, filePath: String, goalOpt: Option[String] = None): Framework = {
     val parser: FileParser = parserType match {
       case "apx" => ApxParser
       case "aba" => AbaParser
     }
 
     parser.parseFile(filePath) match {
-      case Success(value) => value
+      case Success(fram) => goalOpt match {
+        case Some(goal) => fram.copy(goals = Set(goal))
+        case _ => fram
+      }
       case Failure(exception) => throw exception
     }
-
   }
 }
