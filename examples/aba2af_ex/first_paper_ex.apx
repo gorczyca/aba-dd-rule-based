@@ -1,0 +1,21 @@
+% Assumptions
+myAsm(q).
+myAsm(r).
+myAsm(s).
+myAsm(u).
+
+% Contraries
+contrary(q, nq).
+contrary(s, ns).
+contrary(r, nr).
+contrary(u, nu).
+
+% Rules
+myRule(ns, [q]).
+myRule(nq, [r,s]).
+myRule(nq, [u,v]).
+myRule(nr, []).
+myRule(nu, []).
+
+% Goal
+query(ns).

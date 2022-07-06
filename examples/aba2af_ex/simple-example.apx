@@ -1,0 +1,24 @@
+%A
+myAsm(w1).
+myAsm(w2).
+myAsm(w3).
+
+%Contraries
+contrary(w1, xW1).
+contrary(w2, xW2).
+contrary(w3, xW3).
+
+myRule(yes, [w1]).
+myRule(xW1, [xYes]).
+
+myRule(yes, [w2]).
+myRule(xW2, [xYes]).
+
+myRule(no, [w3]).
+myRule(xW3, [xNo]).
+
+myRule(xYes, [no]).
+myRule(xNo, [yes]).
+
+% goals
+query(yes).

@@ -1,8 +1,8 @@
 package dot
 
 import aba.framework.Framework
-import aba.reasoner.DisputeState
-import aba.reasoner.argumentBased2.{ArgumentNode, ArgumentTree}
+import aba.reasoner.{DisputeState, PotentialAssumptionMove, PotentialMove2}
+import aba.reasoner.argumentBased2.{ArgumentNode, ArgumentTree, DisputeStateAB2}
 
 import java.io.PrintWriter
 
@@ -16,8 +16,11 @@ object ABDotConverter {
   private val incompleteArgColor = "gray93"
   private val circularArgColor = "pink"
 
-  private val attackEdgeDefaults = """[fillcolor="white", arrowhead="onormal", color="red:white:red"]"""
+  private val proponentWonColor = "palegreen"
+  private val opponentWonColor = "lightpink"
+  private val gameOverFontSize = "100"
 
+  private val attackEdgeDefaults = """[fillcolor="white", arrowhead="onormal", color="red:white:red"]"""
 
   private val proponentGoalShape = "invtriangle"
   private val opponentGoalShape = "triangle"
@@ -26,14 +29,62 @@ object ABDotConverter {
   private val factShape = "star"
   private val multipleBodyShape = "circle"
 
-  def exportDotRepr(proponentArgs: Set[ArgumentTree], opponentArgs: Set[ArgumentTree], outputName: String, additionalInformation: String)(implicit dState: DisputeState, framework: Framework): String = {
-    val reprString = getDotString(proponentArgs, opponentArgs, additionalInformation)
+  def generateABRepresentation(showCircular: Boolean = true,
+                               showIncomplete: Boolean = true,
+                               showConflicted: Boolean = true,
+                               over: Option[Boolean] = None,
+                               outputName: String = "temp_arg.dot",
+                               additionalInformation: String = "")
+                               (implicit dState: DisputeState, framework: Framework, performedMoves: List[PotentialMove2]): String = {
+
+    // assumptions used with PF2 that are not contained in any rule
+    val propAssumptionGoals = performedMoves.filter(_.moveType.isProponentMove).collect {
+      case asmMove: PotentialAssumptionMove if !dState.pRules.flatMap(_.statements).contains(asmMove.assumption) => asmMove.assumption
+    }.toSet
+
+    val actualPropGoals = framework.goals  union framework.contrariesOf(dState.culprits) union propAssumptionGoals
+
+    def filterCircular: ArgumentTree => Boolean = arg => showCircular || !arg.isCircular
+    def filterIncomplete: ArgumentTree => Boolean = arg => showIncomplete || arg.isComplete
+    def filterConflicted: ArgumentTree => Boolean = arg => showConflicted || !arg.isConflicted
+
+    val propArgs = DisputeStateAB2.create_arguments(actualPropGoals, dState.pRules)
+      .filter(filterCircular)
+      .filter(filterConflicted)
+      .filter(filterIncomplete)
+
+    // maximality
+    val propArgs2 = propArgs.filter(arg => !(propArgs - arg).exists(otherArg => arg.rulesUsed.subsetOf(otherArg.rulesUsed)))
+
+    // assumptions used in OF2 moves that are not parts of any rules used
+    val oppAssumptionGoals = performedMoves.filter(_.moveType.isOpponentsMove).collect {
+      case asmMove: PotentialAssumptionMove if !dState.bRules.flatMap(_.statements).contains(asmMove.assumption) => asmMove.assumption
+    }.toSet
+
+    val opponentGoals = (dState.defenceContraries intersect dState.bStatements) union oppAssumptionGoals // those that actually have been uttered
+    val oppArgs = DisputeStateAB2.create_arguments(opponentGoals, dState.bRules)
+      .filter(filterCircular)
+      .filter(filterConflicted)
+      .filter(filterIncomplete)
+
+    // maximality
+    val oppArgs2 = oppArgs.filter(arg => !(oppArgs - arg).exists(otherArg => arg.rulesUsed.subsetOf(otherArg.rulesUsed)))
+
+    ABDotConverter.exportDotRepr(propArgs2, oppArgs2, outputName, additionalInformation, over)
+
+    outputName
+  }
+
+
+  def exportDotRepr(proponentArgs: Set[ArgumentTree], opponentArgs: Set[ArgumentTree], outputName: String, additionalInformation: String, indicateOver: Option[Boolean])
+                   (implicit dState: DisputeState, framework: Framework): String = {
+    val reprString = getDotString(proponentArgs, opponentArgs, additionalInformation, indicateOver)
     new PrintWriter(outputName) { write(reprString); close() }
 
     outputName
   }
 
-  private def getDotString(proponentArgs: Set[ArgumentTree], opponentArgs: Set[ArgumentTree], additionalInformation: String)(implicit dState: DisputeState, framework: Framework): String = {
+  private def getDotString(proponentArgs: Set[ArgumentTree], opponentArgs: Set[ArgumentTree], additionalInformation: String, indicateOver: Option[Boolean])(implicit dState: DisputeState, framework: Framework): String = {
 
     val propArgs = proponentArgs.map(argTree => getArgSubgraph(argTree, isProp = true))
     val oppArgs = opponentArgs.map(argTree => getArgSubgraph(argTree, isProp = false))
@@ -42,19 +93,49 @@ object ABDotConverter {
     // add attacks between arguments
     val allNodeArgsFlattened = (proponentArgs union opponentArgs).flatMap(_.root.flattenTreeSet)
     val attackEdges = framework.contraries.flatMap(contrary => {
-      val attackFrom = allNodeArgsFlattened.filter(_.data == contrary.contrary)
-      val attackTo = allNodeArgsFlattened.filter(_.data == contrary.assumption)
+      val attackFrom = allNodeArgsFlattened.filter(_.statement == contrary.contrary)
+      val attackTo = allNodeArgsFlattened.filter(_.statement == contrary.assumption)
 
       for (from <- attackFrom; to <- attackTo) yield s"${from.uid} -> ${to.uid} $attackEdgeDefaults"
     })
 
+
+    // TODO: PASS step
+
+    val STEP = 999
+
+    // \tbgcolor="white:${proponentWonColor}";
+
+
+    var indicateOverInfo = indicateOver match {
+      case Some(true) =>
+        s"""
+           |\tbgcolor="${proponentWonColor}";
+           |\tlabel="Proponent won.";
+           |\tfontname="times-italic";
+           |\tfontsize="${gameOverFontSize}";
+           |""".stripMargin
+      case Some(false) =>
+        s"""
+           |\tbgcolor="${opponentWonColor}";
+           |\tlabel="Opponent won.";
+           |\tfontname="times-italic";
+           |\tfontsize="${gameOverFontSize}";
+           |""".stripMargin
+      case None => ""
+    }
+
     s"""
        |${additionalInformation}
        |
-       |digraph DisputeStateStep${dState.id} {\n
+       |digraph DisputeStateStep${STEP} {\n
+       |
+       |$indicateOverInfo
+       |
        |
        |\t // global defaults
        |\t 	node [ fontname="times-bold", color="black", style="filled", fontsize="20", margin="0.1,0.0", shape="rectangle"]
+       |\t  rankdir="BT";
        |\n
        |// Proponent's args
        |${propArgs.mkString("\n\n")}
@@ -72,7 +153,7 @@ object ABDotConverter {
 
     val maxLength = 3
 
-    val splits = "((?<=[A-Z])|(?=[A-Z]))".r.split(argNode.data.id).toList
+    val splits = "((?<=[A-Z])|(?=[A-Z]))".r.split(argNode.statement).toList
     val firstElem::tail = splits
 
     val (newTailOdd, newTailEven) = tail.zipWithIndex.partition{ case (_, index) => index % 2 ==0 }
@@ -125,7 +206,7 @@ object ABDotConverter {
     }
 
     val argumentNodes = argumentTree.root.flattenTree
-    val (assumptions, nonAssumtpions) = argumentNodes.partition(argNode => framework.assumptions.contains(argNode.data))
+    val (assumptions, nonAssumtpions) = argumentNodes.partition(argNode => framework.assumptions.contains(argNode.statement))
     val (facts, nonFacts) = nonAssumtpions.partition(_.factNode)
     val (goal, nonGoals) = nonFacts.partition(argNode => argNode == argumentTree.root)
     val (circularArgs, nonCircularArgs) = nonGoals.partition(argNode => argumentTree.circularArgs match {
@@ -145,7 +226,7 @@ object ABDotConverter {
     val normalStatements = nonCircularArgs.map(argNode => s"""${argNode.uid} [label="${getLabel(argNode)}", fillcolor="white:$statementColor"];""")
 
     val (clusterColor, labelInfo) = if (argumentTree.isCircular) (circularArgColor, "circular") else if (argumentTree.isComplete) (completeArgColor, "complete") else (incompleteArgColor, "incomplete")
-    val label = s"${argumentTree.root.data} ($labelInfo)"
+    val label = s"${argumentTree.root.statement} ($labelInfo)"
 
     s"""subgraph cluster_${argumentTree.uid} {
        |\tstyle="filled";

@@ -1,0 +1,24 @@
+% Assumptions
+myAsm(a).
+myAsm(b).
+myAsm(c).
+myAsm(d).
+
+% Contraries
+contrary(a, q).
+contrary(b, r).
+contrary(c, s).
+contrary(d, s).
+
+% Rules
+myRule(p, [a]).
+myRule(q, [b]).
+myRule(q, [z]).
+myRule(z, [a,b]).
+myRule(r, [c]).
+myRule(r, [d]).
+
+% Constraints
+
+% Goals:
+query(p).

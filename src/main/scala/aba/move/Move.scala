@@ -1,9 +1,9 @@
 package aba.move
 
 import scala.language.implicitConversions
-import aba.framework.{Framework, Literal}
+import aba.framework.{Contrary, Framework, Literal}
 import aba.move.DisputeAdvancement.{DAB, DABF, DC, DF, DS, DisputeAdvancementType}
-import aba.reasoner.{DisputeState, PotentialMove, PotentialMove2}
+import aba.reasoner.{DisputeState, PotentialMove2}
 
 import scala.math.Ordering.Implicits.seqOrdering
 
@@ -51,7 +51,7 @@ object Move extends Enumeration {
     def isAssumptionMove: Boolean = !isRuleMove
   }
 
-  def possibleMovesToString(possibleMoves: Map[MoveType, Seq[PotentialMove]]): String = {
+  def possibleMovesToString(possibleMoves: Map[MoveType, Seq[PotentialMove2]]): String = {
     possibleMoves.toSeq.sortBy(_._1).map {
       case (mType, moves) => s"$mType:\n" + moves.zipWithIndex.map {
         case (pMove, index) => s"\t$index: $pMove"
@@ -68,13 +68,13 @@ object Move extends Enumeration {
 
     val x = moveTypes.map(mType => {
       val innerMap = advancementTypesMoves.filter(_._2.keys.toSeq.contains(mType))
-        .map { case (advType: DisputeAdvancementType, map: Map[MoveType, Seq[PotentialMove]]) =>
+        .map { case (advType: DisputeAdvancementType, map: Map[MoveType, Seq[PotentialMove2]]) =>
           (advType, map(mType))
         }.sortWith(_._1 < _._1).toMap
       (mType, innerMap)
     })
 
-    x.map { case (mType: MoveType, map: Map[DisputeAdvancementType, Seq[PotentialMove]] ) =>
+    x.map { case (mType: MoveType, map: Map[DisputeAdvancementType, Seq[PotentialMove2]] ) =>
       s"$mType:\n" + map.map {
         { case (dType, potentialMoves) => s"\t$dType:\n" + potentialMoves.map(pMove => s"\t\t$pMove").mkString("\n") }   // TODO: zip with index?
       }.mkString("\n")
@@ -87,4 +87,39 @@ object Move extends Enumeration {
 abstract class Move {
   //def isPossible(dState: DisputeState)(implicit framework: Framework): Set[PotentialMove]
   def isPossible(advancementType: DisputeAdvancementType)(implicit framework: Framework, dState: DisputeState): Seq[PotentialMove2]
+}
+
+trait OpponentsAttackingMove extends Move {
+  def attackedAssumptionsBySet(set: Set[String], advancementType: DisputeAdvancementType)(implicit framework: Framework, dState: DisputeState): Option[Set[String]] = {
+    val assumptionsToAttack = advancementType match {
+      case DC => dState.defences ++ dState.currentlyDefendedAssumptions
+      case DF => framework.assumptions
+      case _ => dState.defences
+    }
+
+    val attackedBySet = framework.contraries.filter {
+      case Contrary(_, contrary) => set.contains(contrary)
+    }.map(_.assumption)
+
+    val attackedAssumptions = assumptionsToAttack intersect attackedBySet
+    if (attackedAssumptions.nonEmpty) Some(attackedAssumptions) else None
+  }
+}
+
+trait ProponentsAttackingMove extends Move {
+  def attackedAssumptionsBySet(set: Set[String], advancementType: DisputeAdvancementType)(implicit framework: Framework, dState: DisputeState): Option[Set[String]] = {
+
+    val assumptionsToAttack = advancementType match {
+      case DF => framework.assumptions
+      case _ => dState.culpritCandidates
+    }
+
+    val attackedBySet = framework.contraries.filter {
+      case Contrary(_, contrary) => set.contains(contrary)
+    }.map(_.assumption)
+
+
+    val attackedAssumptions = assumptionsToAttack intersect attackedBySet
+    if (attackedAssumptions.nonEmpty) Some(attackedAssumptions) else None
+  }
 }
