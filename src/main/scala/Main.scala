@@ -10,6 +10,7 @@ import interface.ProgramState
 // only for a test
 
 import interface.dotConverters.ABRepresentationInterface.generateABRepresentation
+import interface.dotConverters.RuleDotRepresentationInterface.generateRuleRepresentation
 import interface.InputProcessorInterface.processUserInput
 
 
@@ -73,7 +74,8 @@ object Main {
     }
 
     if (programState.generatedArg) generateABRepresentation()
-    if (programState.generateDot) DotConverter.exportDotRepr()
+    //if (programState.generateDot) DotConverter.exportDotRepr()
+    if (programState.generateDot) generateRuleRepresentation()
 
     val newProgramState = processUserInput(programState)
 

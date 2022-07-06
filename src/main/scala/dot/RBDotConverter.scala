@@ -28,13 +28,15 @@ object RBDotConverter {
 
   // colors
   private val proponentColor = "white:green"
-  private val defencesColor = "white:green4"
+  private val defencesColor = "white:green"
+  //private val defencesColor = "white:green4"
   private val opponentColor = "white:yellow"
   private val culpritColor = "white:red"
-  private val blockedColor = "white:orange"
+  private val blockedColor = "white:grey"
   private val unAttackedOpponentsAssumptionsColor = "white:yellow" // was deepping
   private val blockedRemainingRulesColor = "white:grey"
-  private val goalColor = "white:deepskyblue"
+  //private val goalColor = "white:deepskyblue"
+  private val goalColor = "white:green"
   private val parentColor = "white:yellow"
 
   // shapes
@@ -43,6 +45,7 @@ object RBDotConverter {
   private val factShape = """ shape="star", width=0.5"""
   private val assumptionShape = """shape="diamond", width=0.75, height=0.75"""
   private val statementShape = """shape="rectangle" """
+  private val goalShape = """ shape="invtriangle" """
 
   // arrows styles
   private val attackArrowStyle = """ fillcolor="white", arrowhead="onormal" """
@@ -133,6 +136,7 @@ object RBDotConverter {
         }",""" +
           s" ${st match {
             case s if framework.assumptions.contains(s) => assumptionShape
+            case s if framework.goals.contains(s) => goalShape
             case _ => statementShape
           }}  ] "
     }
@@ -206,6 +210,9 @@ object RBDotConverter {
 
     s"""digraph DisputeStateRuleRepresentation {
        |${"\t"}$nodeDefaults
+       |
+       |${"\t"}rankdir="BT";
+       |
        |
        |${"\t"}// NODES
        |${"\t"}// statements nodes
