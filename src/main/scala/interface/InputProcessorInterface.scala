@@ -116,12 +116,16 @@ object InputProcessorInterface {
         state
       case "?" =>
         println(s"Possible moves:\n${Move.possibleMovesToString(possibleMoves)}\n")
-        state
+        state.copy(redraw = false)
       case "??" =>
         println(s"Possible moves according to all dispute advancements:\n${Move.possibleMovesAccordingToAllAdvancementToString}\n")
         state
       case "q" | "quit" =>
         state.copy(quit = true)
+      case "state 0" =>
+        state.copy(showState = false)
+      case "state 1" =>
+        state.copy(showState = true)
       case "h" | "help" =>
         printHelp()
         state
@@ -167,24 +171,24 @@ object InputProcessorInterface {
       case s"dotp 0" =>
         println(s"Continuous rule based representation generation switched OFF.")
         state.copy(generateDot = false)
-      case s"dot" =>
-        val fileName = s"rule_repr_step${stateId}.dot"
-        DotConverter.exportDotRepr(outputFileName = fileName)
-        println(s"Rule based representation exported to: $fileName")
-        state
-      case s"dot s" =>
-        val fileName = s"rule_repr_step$stateId.dot"
-        DotConverter.exportDotRepr(gradientFill = false)
-        println(s"Rule based representation exported to: $fileName")
-        state
-      case s"dot s $fileName" =>
-        DotConverter.exportDotRepr(gradientFill = false, outputFileName = fileName)
-        println(s"Rule based representation exported to: $fileName")
-        state
-      case s"dot $fileName" =>
-        DotConverter.exportDotRepr(outputFileName = fileName)
-        println(s"Rule based representation exported to: $fileName")
-        state
+      //case s"dot" =>
+      //  val fileName = s"rule_repr_step${stateId}.dot"
+      //  DotConverter.exportDotRepr(outputFileName = fileName)
+//        println(s"Rule based representation exported to: $fileName")
+//        state
+//      case s"dot s" =>
+//        val fileName = s"rule_repr_step$stateId.dot"
+//        DotConverter.exportDotRepr(gradientFill = false)
+//        println(s"Rule based representation exported to: $fileName")
+//        state
+//      case s"dot s $fileName" =>
+//        DotConverter.exportDotRepr(gradientFill = false, outputFileName = fileName)
+//        println(s"Rule based representation exported to: $fileName")
+//        state
+//      case s"dot $fileName" =>
+//        DotConverter.exportDotRepr(outputFileName = fileName)
+//        println(s"Rule based representation exported to: $fileName")
+//        state
       case s"legend" =>
         val legFileName = DotConverter.exportLegend()
         println(s"DOT legend exported to: $legFileName")

@@ -61,8 +61,11 @@ object Main {
     if (programState.redraw) {
       val redrawInfo = programState.performedMoves.lastOption match {
         case Some(performedMove) =>
-          s"${programState.performedMoves.size}: ${performedMove.toString}:" +
-          s"\n${currentState.toString}"
+          val performedMoveInfo = s"${programState.performedMoves.size}: ${performedMove.toString}" //+
+          //s"\n${currentState.toString}"
+          if (programState.showState) s"$performedMoveInfo:\n${currentState.toString}"
+          else performedMoveInfo
+
         case _ => s"No moves performed."
       }
       println(s"$redrawInfo")

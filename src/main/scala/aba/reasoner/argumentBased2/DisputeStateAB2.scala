@@ -40,9 +40,11 @@ object DisputeStateAB2 {
       }
     }
 
-    val initialStack = goals.map(stmt => ArgumentTree(ArgumentNode(stmt))).toList
+    val (assumptions, nonAssumptions) = goals.partition(stmt => framework.assumptions.contains(stmt))
+    val assumptionArgs = assumptions.map(ass => ArgumentTree(ArgumentNode(ass), isComplete = true)).toList
+    val nonAssumptionArgs = nonAssumptions.map(stmt => ArgumentTree(ArgumentNode(stmt))).toList
 
-    create_args_rec(initialStack, Set.empty[ArgumentTree])
+    create_args_rec(assumptionArgs ++ nonAssumptionArgs, Set.empty[ArgumentTree])
   }
 
 

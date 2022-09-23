@@ -175,6 +175,10 @@ object ArgumentTree {
     new ArgumentTree(argumentNode, Map(argumentNode -> Set.empty[Rule]), Set.empty[Rule], uuid = newUuid)
   }
 
+  def apply(argumentNode: ArgumentNode, isComplete: Boolean): ArgumentTree = {
+    new ArgumentTree(argumentNode, Map(argumentNode -> Set.empty[Rule]), Set.empty[Rule], uuid = newUuid, isComplete = isComplete)
+  }
+
   def apply(root: ArgumentNode,
             endpoints: Map[ArgumentNode, Set[Rule]],
             rules: Set[Rule],
