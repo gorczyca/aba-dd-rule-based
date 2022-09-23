@@ -120,7 +120,7 @@ object RBDotConverter {
       case Rule(_, _, body) => (body intersect dState.culprits).nonEmpty
     }
 
-    val statementsNodes = (dState.bStatements ++ allBlockedRules.flatMap(_.body)).map { st =>
+    val statementsNodes = (dState.bStatements ++ allBlockedRules.flatMap(_.statements)).map { st =>
       s"${getUid(st)} [ " +
         s"""label="$st", """  +
         s"""fillcolor="${ st match {
@@ -203,7 +203,7 @@ object RBDotConverter {
       s"""{ ${(framework.contraries.filter { case Contrary(asm, _) => c == asm }.map(_.contrary) intersect dState.pStatements).map(getUid(_)).mkString(", ")} } -> ${getUid(c)} [ $attackArrowStyle, $propAttackArrowColor ] """
     )
 
-    val opponentAttackEdges = (dState.defenceContraries intersect dState.bStatements).map(ctr =>
+    val opponentAttackEdges = (dState.defenceContraries intersect (dState.bStatements union allBlockedRules.flatMap(_.statements))).map(ctr =>
       s"""${getUid(ctr)}  -> { ${(framework.contraries.filter { case Contrary(_, c) => c == ctr }.map(_.assumption) intersect dState.defences).map(getUid(_)).mkString(", ")} } [ $attackArrowStyle, $propAttackArrowColor ] """
     )
 

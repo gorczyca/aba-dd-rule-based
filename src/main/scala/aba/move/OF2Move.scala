@@ -21,7 +21,7 @@ object OF2Move extends Move with OpponentsAttackingMove {
 
   override def isPossible(advancementType: DisputeAdvancementType)(implicit framework: Framework, dState: DisputeState): Seq[PotentialMove2] = {
 
-    val assumptions = possibleAssumptions(advancementType)
+    val assumptions = possibleAssumptions(advancementType) -- dState.culprits
 
     assumptions.map(ass => {
       OF2Move(ass, attackedAssumptionsBySet(Set(ass), advancementType))

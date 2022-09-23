@@ -107,23 +107,30 @@ object ABDotConverter {
     // \tbgcolor="white:${proponentWonColor}";
 
 
-    var indicateOverInfo = indicateOver match {
-      case Some(true) =>
-        s"""
-           |\tbgcolor="${proponentWonColor}";
-           |\tlabel="Proponent won.";
-           |\tfontname="times-italic";
-           |\tfontsize="${gameOverFontSize}";
-           |""".stripMargin
-      case Some(false) =>
-        s"""
-           |\tbgcolor="${opponentWonColor}";
-           |\tlabel="Opponent won.";
-           |\tfontname="times-italic";
-           |\tfontsize="${gameOverFontSize}";
-           |""".stripMargin
-      case None => ""
-    }
+//    val indicateOverInfo = indicateOver match {
+//      case Some(true) =>
+//        s"""
+//           |\tbgcolor="${proponentWonColor}";
+//           |\tlabel="Proponent won.";
+//           |\tfontname="times-italic";
+//           |\tfontsize="${gameOverFontSize}";
+//           |""".stripMargin
+//      case Some(false) =>
+//        s"""
+//           |\tbgcolor="${opponentWonColor}";
+//           |\tlabel="Opponent won.";
+//           |\tfontname="times-italic";
+//           |\tfontsize="${gameOverFontSize}";
+//           |""".stripMargin
+//      case None => ""
+//    }
+
+        val indicateOverInfo = indicateOver match {
+          case Some(true) => s"""\tbgcolor="${proponentWonColor}"; """
+          case Some(false) => s"""\tbgcolor="${opponentWonColor}";  """
+          case None => ""
+        }
+
 
     s"""
        |${additionalInformation}
@@ -176,7 +183,7 @@ object ABDotConverter {
 
   }
 
-  private def getArgSubgraph(argumentTree: ArgumentTree, isProp: Boolean)(implicit framework: Framework): String = {
+  private def getArgSubgraph(argumentTree: ArgumentTree, isProp: Boolean)(implicit framework: Framework, dState: DisputeState): String = {
 
     //@tailrec TODO: not tail recursive
     def getArgsEdgesRec(argumentNode: ArgumentNode): Set[String] = {
@@ -208,7 +215,11 @@ object ABDotConverter {
     val argumentNodes = argumentTree.root.flattenTree
     val (assumptions, nonAssumtpions) = argumentNodes.partition(argNode => framework.assumptions.contains(argNode.statement))
     val (facts, nonFacts) = nonAssumtpions.partition(_.factNode)
-    val (goal, nonGoals) = nonFacts.partition(argNode => argNode == argumentTree.root)
+
+    // goal or culprit contrary
+    val goalsAndCulpritCandidates = framework.contrariesOf(dState.culprits) union framework.goals
+    val (goal, nonGoals) = nonFacts.partition(argNode => (argNode == argumentTree.root && goalsAndCulpritCandidates.contains(argNode.statement)))
+
     val (circularArgs, nonCircularArgs) = nonGoals.partition(argNode => argumentTree.circularArgs match {
       case Some(circArgs) => circArgs.contains(argNode)
       case _ => false
@@ -228,13 +239,18 @@ object ABDotConverter {
     val (clusterColor, labelInfo) = if (argumentTree.isCircular) (circularArgColor, "circular") else if (argumentTree.isComplete) (completeArgColor, "complete") else (incompleteArgColor, "incomplete")
     val label = s"${argumentTree.root.statement} ($labelInfo)"
 
+    // the three were removed
+
+    //\tlabel="$label";
+    //\tfontname="times-italic";
+    //\tfontsize="30";
+
+
     s"""subgraph cluster_${argumentTree.uid} {
        |\tstyle="filled";
        |\tcolor="black";
        |\tfillcolor="$clusterColor";
-       |\tlabel="$label";
-       |\tfontname="times-italic";
-       |\tfontsize="30";
+
        |\t// node defaults
        |\tnode [color="black" ];
        |\t// edges
