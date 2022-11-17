@@ -55,6 +55,8 @@ abstract class AutomaticReasoner2(dfs: Boolean,
 
 
 
+
+
         val duration = (System.nanoTime - sTime) / 1e9d
 
         // stop the search if timeout has expired
@@ -64,20 +66,20 @@ abstract class AutomaticReasoner2(dfs: Boolean,
             case _ =>
         }
 
+        movesNumberOpt match {
+            case Some(0)  =>
+                // in this case just return
+                return (stack, Nil, false, duration)
+            case _ =>
+        }
+
+
+
 
 
         // stop the search if stack is empty OR there is some successfulDS found and only one was required
         if (stack.isEmpty || (onlyOne && successfulDS.nonEmpty) || (successfulDS.nonEmpty && movesNumberOpt.isDefined))
             return (stack, successfulDS, false, duration)
-
-        val newMovesNumberOpt = movesNumberOpt match {
-            case Some(0)  =>
-                // in this case just return
-                return (stack, Nil, false, duration)
-            case Some(movesNumber) => Some(movesNumber - 1)
-            case None => None
-        }
-
 
 
         implicit val headDS :: restOfDisputeStates = stack // TODO: type annotation?
@@ -144,7 +146,7 @@ abstract class AutomaticReasoner2(dfs: Boolean,
 
 
                     // it is actually the one that we wanted
-                    getNewIncompleteSuccessfulDSAndStackRec(restOfDisputeStates, successfulDerivations, Some(sTime), additionalFilter = additionalFilter, newMovesNumberOpt)
+                    getNewIncompleteSuccessfulDSAndStackRec(restOfDisputeStates, successfulDerivations, Some(sTime), additionalFilter = additionalFilter, movesNumberOpt)
 
                 } else {
 
@@ -159,9 +161,16 @@ abstract class AutomaticReasoner2(dfs: Boolean,
 //                      s"\n igC { ${headDS.ignoredCulpritCandidates.toList.sorted.mkString(",")} } " +
 //                      s"\n igO { ${headDS.ignoredCurrentlyDefendedAssumptions.toList.sorted.mkString(",")} } ")
 
+//                    val newMovesNumberOpt = movesNumberOpt match {
+//                        case Some(0)  =>
+//                            // in this case just return
+//                            return (stack, Nil, false, duration)
+//                        case Some(movesNumber) => Some(movesNumber - 1)
+//                        case None => None
+//                    }
 
                     val upgradedDS = headDS.copy(currentAdvancementType = dAdvancementType, currentTerminationCriteria = tCriteriaType)
-                    getNewIncompleteSuccessfulDSAndStackRec(upgradedDS +: restOfDisputeStates, successfulDS, Some(sTime), additionalFilter = additionalFilter, newMovesNumberOpt)
+                    getNewIncompleteSuccessfulDSAndStackRec(upgradedDS +: restOfDisputeStates, successfulDS, Some(sTime), additionalFilter = additionalFilter, movesNumberOpt)
                 }
 
 
@@ -170,7 +179,7 @@ abstract class AutomaticReasoner2(dfs: Boolean,
                 //if (outputToFile) appendToFile(("\t" * (branchingDepth + 1)) + s"NO\n")
                 //if (printDebug) print(size + ("\t" * (branchingDepth + 1)) + s"NO\n")
 
-                getNewIncompleteSuccessfulDSAndStackRec(restOfDisputeStates, successfulDS, Some(sTime), additionalFilter = additionalFilter, newMovesNumberOpt)
+                getNewIncompleteSuccessfulDSAndStackRec(restOfDisputeStates, successfulDS, Some(sTime), additionalFilter = additionalFilter, movesNumberOpt)
             case _ =>
 
                 // TODO:
@@ -178,7 +187,7 @@ abstract class AutomaticReasoner2(dfs: Boolean,
                     //if (outputToFile) appendToFile(("\t" * (branchingDepth + 1)) + s"NO\n")
                     //if (printDebug) print(("\t" * (branchingDepth + 1)) + s"NO\n")
 
-                    getNewIncompleteSuccessfulDSAndStackRec(restOfDisputeStates, successfulDS, Some(sTime), additionalFilter = additionalFilter, newMovesNumberOpt)
+                    getNewIncompleteSuccessfulDSAndStackRec(restOfDisputeStates, successfulDS, Some(sTime), additionalFilter = additionalFilter, movesNumberOpt)
                 } else {
 
                     // continue with current dispute state -- it is not finished yet
@@ -190,6 +199,11 @@ abstract class AutomaticReasoner2(dfs: Boolean,
 //                    if (intersection1.nonEmpty) {
 //                        println("Some state has already been considered")
 //                    }
+
+                    val newMovesNumberOpt = movesNumberOpt match {
+                        case Some(movesNumber) => Some(movesNumber - 1)
+                        case None => None
+                    }
 
                     val disputeStates = if (dfs) newDisputeStates ++ restOfDisputeStates else restOfDisputeStates ++ newDisputeStates
                     getNewIncompleteSuccessfulDSAndStackRec(disputeStates, successfulDS, Some(sTime), additionalFilter = additionalFilter, newMovesNumberOpt)

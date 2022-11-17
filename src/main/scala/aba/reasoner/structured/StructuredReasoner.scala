@@ -3,6 +3,8 @@ package aba.reasoner.structured
 import aba.reasoner.structured.views.ProponentAttacking.moveView
 import aba.reasoner.structured.views.{OpponentAttacking, OpponentInside, ProponentAttacking, ProponentInside, View}
 import interface.ProgramState
+import interface.dotConverters.ABRepresentationInterface.generateABRepresentation
+import interface.InputProcessorInterface.getUserInput
 
 import scala.annotation.tailrec
 import scala.util.matching.Regex
@@ -22,6 +24,9 @@ object StructuredReasoner {
   @tailrec
   def run(implicit state: ProgramState): ProgramState = {
 
+    generateABRepresentation()
+
+
     val functions: Seq[View] = Seq(
       ProponentInside,
       ProponentAttacking,
@@ -33,7 +38,7 @@ object StructuredReasoner {
 
     println(zippedToString(functionsZipped, addTab = false))
 
-    Console.in.readLine match {
+    getUserInput match {
       case "b" => state
       case moveIndex if digitRegex.matches(moveIndex) =>
         val index = moveIndex.toInt

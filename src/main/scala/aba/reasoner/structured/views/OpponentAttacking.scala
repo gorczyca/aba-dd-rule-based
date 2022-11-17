@@ -4,10 +4,12 @@ import aba.framework.Framework
 import aba.move.Move.{OB2, OF2, PB2, PF2}
 import aba.move.{OB2Move, OF2Move, PB2Move, PF2Move}
 import aba.reasoner.argumentBased2.{ArgumentTree, DisputeStateAB2}
-import aba.reasoner.structured.StructuredReasoner
+import aba.reasoner.structured.{ArgumentsToChooseFrom, StatementsToChooseFrom, StatementsWithinArgumentToChooseFrom, StructuredReasoner}
 import aba.reasoner.{DisputeState, PotentialMove2}
 import interface.ProgramState
 import aba.reasoner.structured.StructuredReasoner.{digitRegex, indicesRegex, zippedToString}
+import interface.InputProcessorInterface.getUserInput
+import interface.dotConverters.ABRepresentationInterface.generateABRepresentation
 
 import scala.annotation.tailrec
 import scala.util.matching.Regex
@@ -22,7 +24,11 @@ object OpponentAttacking extends View {
 
     val pGoalsCulpritCandidates = (framework.contrariesOf(dState.culprits) intersect dState.pStatements) union framework.goals
     val argumentsForGoalsAndCulpritCandidates = DisputeStateAB2.create_arguments(pGoalsCulpritCandidates, dState.pRules)
-    val argumentsDefencesMap = argumentsForGoalsAndCulpritCandidates.map(arg =>
+
+    // TODO: take only the maximal ones
+    val maximalPropArgs = argumentsForGoalsAndCulpritCandidates.filter(arg => !(argumentsForGoalsAndCulpritCandidates - arg).exists(argBigger => arg.rulesUsed.subsetOf(argBigger.rulesUsed)))
+
+    val argumentsDefencesMap = maximalPropArgs.map(arg =>
       (arg,  (arg.rulesUsed.flatMap(_.statements) + arg.root.statement) intersect dState.defences)
     )
 
@@ -61,8 +67,10 @@ object OpponentAttacking extends View {
     println("Goal view:")
     println(zippedToString(headsZipped))
 
+    generateABRepresentation(highlightedData = Some(StatementsToChooseFrom(heads.toSet, proponent = true)))
+
     // TODO: all of that should be in some interface
-    val read = Console.in.readLine
+    val read = getUserInput
     read match {
       case "b" => StructuredReasoner.run
       case "" =>
@@ -95,8 +103,9 @@ object OpponentAttacking extends View {
     println("Argument view:")
     println(zippedToString(argsZipped))
 
-    val read = Console.in.readLine
-    read match {
+    generateABRepresentation(highlightedData = Some(ArgumentsToChooseFrom(arguments.keySet, proponent = true)))
+
+    getUserInput match {
       case "" =>
         statementsView(arguments.keySet)(arguments)
       case "b" => goalView
@@ -128,8 +137,9 @@ object OpponentAttacking extends View {
 
     println(zippedToString(defencesZipped))
 
-    val read = Console.in.readLine
-    read match {
+    generateABRepresentation(highlightedData = Some(StatementsWithinArgumentToChooseFrom(arguments, chosenArgumentsDefences.keySet, proponent = true)))
+
+    getUserInput match {
       case "" =>
         moveView(chosenArgumentsDefences)(arguments, backtracking)
       case "b" => argumentView(backtracking)
@@ -166,10 +176,11 @@ object OpponentAttacking extends View {
     val movesToPerform = moves.values.flatten
     val movesZipped = movesToPerform.zipWithIndex
 
+    generateABRepresentation(highlightedData = Some(StatementsWithinArgumentToChooseFrom(backtracking1, moves.keySet, proponent = true)))
+
     println(zippedToString(movesZipped))
 
-    val read = Console.in.readLine
-    read match {
+    getUserInput match {
       case "" =>
         println("Choose move to perform")
         moveView(moves)(backtracking1, backtracking2)

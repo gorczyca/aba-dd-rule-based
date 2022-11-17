@@ -7,6 +7,7 @@ case class Rule(id: Option[String], head: String, body: Set[String]) {
   }
 
   // <- ←
+  // TODO: keep the arrow somewhere in some constants
   override def toString: String = s"$head ← ${body.mkString(",")}"
 
   def statements: Set[String] = body + head

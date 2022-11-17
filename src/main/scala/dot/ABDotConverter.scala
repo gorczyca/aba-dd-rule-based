@@ -3,6 +3,7 @@ package dot
 import aba.framework.Framework
 import aba.reasoner.{DisputeState, PotentialAssumptionMove, PotentialMove2}
 import aba.reasoner.argumentBased2.{ArgumentNode, ArgumentTree, DisputeStateAB2}
+import aba.reasoner.structured.{ArgumentsToChooseFrom, HighlightedData, StatementsToChooseFrom, StatementsWithinArgumentToChooseFrom}
 
 import java.io.PrintWriter
 
@@ -11,6 +12,7 @@ object ABDotConverter {
 
   private val proponentColor = "green"
   private val opponentColor = "yellow"
+  private val highlightColor = "tomato"
   private val circularColor = "deeppink"
   private val completeArgColor = "grey"
   private val incompleteArgColor = "gray93"
@@ -76,22 +78,23 @@ object ABDotConverter {
   }
 
 
-  def exportDotRepr(proponentArgs: Set[ArgumentTree], opponentArgs: Set[ArgumentTree], outputName: String, additionalInformation: String, indicateOver: Option[Boolean])
+  // TODO: actually create a class and instantiate it!
+  def exportDotRepr(proponentArgs: Set[ArgumentTree], opponentArgs: Set[ArgumentTree], outputName: String, additionalInformation: String, indicateOver: Option[Boolean], highlightData: Option[HighlightedData] = None)
                    (implicit dState: DisputeState, framework: Framework): String = {
-    val reprString = getDotString(proponentArgs, opponentArgs, additionalInformation, indicateOver)
+    val reprString = getDotString(proponentArgs, opponentArgs, additionalInformation, indicateOver, highlightData)
     new PrintWriter(outputName) { write(reprString); close() }
 
     outputName
   }
 
-  private def getDotString(proponentArgs: Set[ArgumentTree], opponentArgs: Set[ArgumentTree], additionalInformation: String, indicateOver: Option[Boolean])(implicit dState: DisputeState, framework: Framework): String = {
+  private def getDotString(proponentArgs: Set[ArgumentTree], opponentArgs: Set[ArgumentTree], additionalInformation: String, indicateOver: Option[Boolean], highlightData: Option[HighlightedData] = None)(implicit dState: DisputeState, framework: Framework): String = {
 
-    val propArgs = proponentArgs.map(argTree => getArgSubgraph(argTree, isProp = true))
-    val oppArgs = opponentArgs.map(argTree => getArgSubgraph(argTree, isProp = false))
+    val propArgs = proponentArgs.map(argTree => getArgSubgraph(argTree, isProp = true, highlightData))
+    val oppArgs = opponentArgs.map(argTree => getArgSubgraph(argTree, isProp = false, highlightData))
 
 
     // add attacks between arguments
-    val allNodeArgsFlattened = (proponentArgs union opponentArgs).flatMap(_.root.flattenTreeSet)
+    val allNodeArgsFlattened = (proponentArgs union opponentArgs).toSeq.flatMap(_.root.flattenTree) // TODO: ad hoc, changed this set to sequence so that "duplicates are preserved"
     val attackEdges = framework.contraries.flatMap(contrary => {
       val attackFrom = allNodeArgsFlattened.filter(_.statement == contrary.contrary)
       val attackTo = allNodeArgsFlattened.filter(_.statement == contrary.assumption)
@@ -111,7 +114,8 @@ object ABDotConverter {
 //      case Some(true) =>
 //        s"""
 //           |\tbgcolor="${proponentWonColor}";
-//           |\tlabel="Proponent won.";
+//           |\tlabel=
+    //           "Proponent won.";
 //           |\tfontname="times-italic";
 //           |\tfontsize="${gameOverFontSize}";
 //           |""".stripMargin
@@ -141,7 +145,9 @@ object ABDotConverter {
        |
        |
        |\t // global defaults
-       |\t 	node [ fontname="times-bold", color="black", style="filled", fontsize="20", margin="0.1,0.0", shape="rectangle"]
+       |\t  start="self;"
+       |\t  graph[start="self"];
+       |\t 	node [ fontname="times-bold", color="black", style="filled", fontsize="20", margin="0.1,0.0", shape="self", pin=true]
        |\t  rankdir="BT";
        |\n
        |// Proponent's args
@@ -156,11 +162,11 @@ object ABDotConverter {
 
   }
 
-  def getLabel(argNode: ArgumentNode): String = {
+  def getLabel(statement: String): String = {
 
     val maxLength = 3
 
-    val splits = "((?<=[A-Z])|(?=[A-Z]))".r.split(argNode.statement).toList
+    val splits = "((?<=[A-Z])|(?=[A-Z]))".r.split(statement).toList
     val firstElem::tail = splits
 
     val (newTailOdd, newTailEven) = tail.zipWithIndex.partition{ case (_, index) => index % 2 ==0 }
@@ -183,7 +189,44 @@ object ABDotConverter {
 
   }
 
-  private def getArgSubgraph(argumentTree: ArgumentTree, isProp: Boolean)(implicit framework: Framework, dState: DisputeState): String = {
+
+
+
+
+  private def shouldHighlightGoalStatement(isProp: Boolean, goalStatement: String, highlightedData: Option[HighlightedData] = None): Boolean = {
+     highlightedData match {
+      case Some(StatementsToChooseFrom(statements, `isProp`)) => statements.contains(goalStatement)
+      case _ => false
+    }
+  }
+
+
+  // TODO: comparison based on string
+  private def shouldHighlightArgument(isProp: Boolean, argument: ArgumentTree, highlightedData: Option[HighlightedData] = None): Boolean = {
+    highlightedData match {
+      case Some(ArgumentsToChooseFrom(arguments, `isProp`)) => {
+        val test = arguments.map(_.toString).contains(argument.toString)
+        arguments.map(_.toString).contains(argument.toString)
+      }
+      case _ => false
+    }
+  }
+
+
+  private def shouldHighlightArgumentStatement(isProp: Boolean, argument: ArgumentTree, statement: String, highlightedData: Option[HighlightedData] = None): Boolean = {
+    highlightedData match {
+      case Some(StatementsWithinArgumentToChooseFrom(arguments, statements, `isProp`)) => {
+        val test1 = arguments.map(_.toString).contains(argument.toString)
+        val test2 = statements.contains(statement)
+        arguments.map(_.toString).contains(argument.toString) && statements.contains(statement)
+      }
+      case _ => false
+    }
+  }
+
+
+
+  private def getArgSubgraph(argumentTree: ArgumentTree, isProp: Boolean, highlightedData: Option[HighlightedData] = None)(implicit framework: Framework, dState: DisputeState): String = {
 
     //@tailrec TODO: not tail recursive
     def getArgsEdgesRec(argumentNode: ArgumentNode): Set[String] = {
@@ -220,6 +263,8 @@ object ABDotConverter {
     val goalsAndCulpritCandidates = framework.contrariesOf(dState.culprits) union framework.goals
     val (goal, nonGoals) = nonFacts.partition(argNode => (argNode == argumentTree.root && goalsAndCulpritCandidates.contains(argNode.statement)))
 
+
+
     val (circularArgs, nonCircularArgs) = nonGoals.partition(argNode => argumentTree.circularArgs match {
       case Some(circArgs) => circArgs.contains(argNode)
       case _ => false
@@ -229,14 +274,16 @@ object ABDotConverter {
 
 
     // TODO: some function should do it
-    val assumptionsNodes = assumptions.map(argNode => s"""${argNode.uid} [label="${getLabel(argNode)}", shape="$assumptionShape", fillcolor="white:$statementColor"];""")
-    val factNodes = facts.map(argNode => s"""${argNode.uid} [label="", shape="$factShape", width="0.15", height="0.15", fillcolor="white:$statementColor"];""")
+    val assumptionsNodes = assumptions.map(argNode => s"""${argNode.uid} [label="${getLabel(argNode.statement)}", shape="$assumptionShape", fillcolor="${if (shouldHighlightArgumentStatement(isProp, argumentTree, argNode.statement, highlightedData)) highlightColor else "white:"+statementColor}"];""")
+    // left out the height and width
+    val factNodes = facts.map(argNode => s"""${argNode.uid} [label="", shape="$factShape", fillcolor="white:$statementColor"];""")
+    //val factNodes = facts.map(argNode => s"""${argNode.uid} [label="", shape="$factShape", width="0.15", height="0.15", fillcolor="white:$statementColor"];""")
     val multipleBodyNodes = getMultipleBodyNode(argumentTree.root).map(uid => s"""$uid [label="", shape="$multipleBodyShape", width=0.15, fillcolor="white:$statementColor"];""")
-    val circularNodes = circularArgs.map(argNode => s"""${argNode.uid} [label="${getLabel(argNode)}", fillcolor="white:$circularColor"];""")
-    val goalNodes = goal.map(argNode => s"""${argNode.uid} [label="${getLabel(argNode)}", shape="${if (isProp) proponentGoalShape else opponentGoalShape}", fillcolor="white:$statementColor"]; """) // should be exactly one
-    val normalStatements = nonCircularArgs.map(argNode => s"""${argNode.uid} [label="${getLabel(argNode)}", fillcolor="white:$statementColor"];""")
+    val circularNodes = circularArgs.map(argNode => s"""${argNode.uid} [label="${getLabel(argNode.statement)}", fillcolor="white:$circularColor"];""")
+    val goalNodes = goal.map(argNode => s"""${argNode.uid} [label="${getLabel(argNode.statement)}", shape="${if (isProp) proponentGoalShape else opponentGoalShape}", fillcolor="${if (shouldHighlightGoalStatement(isProp, argNode.statement, highlightedData) || shouldHighlightArgumentStatement(isProp, argumentTree, argNode.statement, highlightedData)) highlightColor else "white:"+statementColor}"]; """) // should be exactly one
+    val normalStatements = nonCircularArgs.map(argNode => s"""${argNode.uid} [label="${getLabel(argNode.statement)}", fillcolor="${if ((argNode == argumentTree.root) && shouldHighlightGoalStatement(isProp, argNode.statement, highlightedData)) highlightColor else if (shouldHighlightArgumentStatement(isProp, argumentTree, argNode.statement, highlightedData)) highlightColor else "white:"+statementColor}"];""")
 
-    val (clusterColor, labelInfo) = if (argumentTree.isCircular) (circularArgColor, "circular") else if (argumentTree.isComplete) (completeArgColor, "complete") else (incompleteArgColor, "incomplete")
+    val (clusterColor, labelInfo) = if (shouldHighlightArgument(isProp, argumentTree, highlightedData)) (highlightColor, "") else if (argumentTree.isCircular) (circularArgColor, "circular") else if (argumentTree.isComplete) (completeArgColor, "complete") else (incompleteArgColor, "incomplete")
     val label = s"${argumentTree.root.statement} ($labelInfo)"
 
     // the three were removed
@@ -247,12 +294,14 @@ object ABDotConverter {
 
 
     s"""subgraph cluster_${argumentTree.uid} {
+       |\tstart="self";
+       |\tgraph[start="self"];
        |\tstyle="filled";
        |\tcolor="black";
        |\tfillcolor="$clusterColor";
 
        |\t// node defaults
-       |\tnode [color="black" ];
+       |\tnode [color="black", start="self"];
        |\t// edges
        |\t${getArgsEdgesRec(argumentTree.root).mkString("\n\t")}
        |\n

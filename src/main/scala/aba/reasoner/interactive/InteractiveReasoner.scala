@@ -2,11 +2,11 @@ package aba.reasoner.interactive
 
 import aba.framework.{Framework, Rule}
 import aba.move.DisputeAdvancement.DisputeAdvancementType
-import aba.move.{Move, OB1Move, OB2Move, TerminationCriteria}
-import aba.move.Move.{OB1, OB2, OF1, PB1, PB2, PF1, PF2, OF2}
+import aba.move.{Move, OB1Move, OB2Move, OF2Move, TerminationCriteria}
+import aba.move.Move.{MoveType, OB1, OB2, OF1, OF2, PB1, PB2, PF1, PF2}
 import aba.move.TerminationCriteria.TerminationCriteriaType
 import aba.reasoner.argumentBased2.DisputeStateAB2
-import aba.reasoner.{DisputeState, PotentialMove2, PotentialRuleMove}
+import aba.reasoner.{DisputeState, PotentialAssumptionMove, PotentialMove2, PotentialRuleMove}
 import aba.reasoner.automatic2.DisputeStateAuto2
 
 import scala.annotation.tailrec
@@ -72,8 +72,10 @@ case class InteractiveReasoner(
   //
 
   @tailrec
-  final def getNewProponentArgs(implicit dSAuto: DisputeStateAuto2, framework: Framework, remainingCountOpt: Option[Int] = None): DisputeStateAuto2 = {
+  final def getNewProponentArgs(implicit dSAuto: DisputeStateAuto2, framework: Framework, potentialMoves: Map[MoveType, Seq[PotentialMove2]], remainingCountOpt: Option[Int] = None): DisputeStateAuto2 = {
 
+
+    // TODO: do not use this count, remove it
     val remainingCount = remainingCountOpt match {
       case Some(r) => r
       case None => propCount
@@ -86,22 +88,50 @@ case class InteractiveReasoner(
 
     val statementsToExpand = dState.pPlayedUnexpandedStatements -- framework.assumptions
     val culpritCandidatesContraries = dState.culpritCandidatesContraries
-
     val statementsTogether = statementsToExpand ++ culpritCandidatesContraries
+
+
+
+
+    // TODO: here allow also for all forward moves
 
     if (statementsTogether.isEmpty) dSAuto
     else {
       // TODO: instead simulate some choice
-      val chosenStmt = Random.shuffle(statementsTogether).head
-      val initialDSAuto = dSAuto.copy(proponentsStatementsToProveOpt = Some(Set(chosenStmt)))
-      val completeArgsForStmt = propFindAllCompleteArgsRec(chosenStmt, List(initialDSAuto), Nil)
+      // there is an error here.
+      // It is not that for every statement there are complete arguments!!!
 
-      if (completeArgsForStmt.isEmpty) dSAuto // TODO: here also allow for incomplete?
+      //val chosenStmt = Random.shuffle(statementsTogether).head
+      //val initialDSAuto = dSAuto.copy(proponentsStatementsToProveOpt = Some(Set(chosenStmt)))
+      //val completeArgsForStmt = propFindAllCompleteArgsRec(chosenStmt, List(initialDSAuto), Nil)
+
+      // TODO: Option to attack with single assumptions
+      val pf2Arguments = if (potentialMoves.contains(PF2)) {
+        potentialMoves(PF2).map {
+          case assMove:PotentialAssumptionMove =>
+            (assMove.assumption, DisputeStateAuto2(assMove) :: Nil)
+        }.toSet
+      } else Set.empty
+
+      // i should be fine just merging the two maps, cause we assume flat framework
+      val statementsArgsMap = (statementsTogether.map(s => {
+        val initStateAuto = dSAuto.copy(proponentsStatementsToProveOpt = Some(Set(s)))
+        (s, propFindAllCompleteArgsRec(s, List(initStateAuto), Nil))
+      }).filter(_._2.nonEmpty) ++ pf2Arguments)
+
+      //val statementsArgMap2 = statementsArgsMap.toMap
+
+      // TODO: test it
+      //val nonEmptyStatementsArgsMap = statementsArgsMap.filter(_._2.nonEmpty)
+
+      if (statementsArgsMap.isEmpty) dSAuto
       else {
+        // first choose an statement, then choose an arg
+        val chosenArg = Random.shuffle(Random.shuffle(statementsArgsMap).head._2).head
         // todo: simulate some choice
 //        val chosenArg = completeArgsForStmt.head
-        val chosenArg = Random.shuffle(completeArgsForStmt).head
-        getNewProponentArgs(chosenArg, framework, Some(remainingCount - 1))
+        //val chosenArg = Random.shuffle(completeArgsForStmt).head
+        getNewProponentArgs(chosenArg, framework, potentialMoves, Some(remainingCount - 1))
 
       }
     }
@@ -118,9 +148,12 @@ case class InteractiveReasoner(
         implicit val headDS: DisputeState = head.dState
         if (headDS.pPlayedCompleteStatements.contains(statement)) propFindAllCompleteArgsRec(statement, rest, successfulCompleteArgs :+ head)
         else {
-                                                                                // advancement type is irrelevant here
-          val possibleMoves = possibleProponentMoveTypes
+
+                                // TODO: why having OF1 here     // advancement type is irrelevant here
+          val possibleMoves = Seq(PB1, PB2, OF1)  // TODO: same problem as for the opponent !!!
+          //val possibleMoves = possibleProponentMoveTypes
             .flatMap(Move(_).isPossible(dAdvancementType).map(move => move.asInstanceOf[PotentialRuleMove]))
+            //.flatMap(Move(_).isPossible(dAdvancementType).map(move => move.asInstanceOf[PotentialRuleMove]))
             .filter { move => head.proponentsStatementsToProveOpt.get.contains(move.rule.head) } // take only those that are relevant
             .groupBy(_.moveType)
 
@@ -153,26 +186,27 @@ case class InteractiveReasoner(
 
     if (newRelevantRules.isEmpty) relevantRules
     else {
-      val newStatements = remainingRules.flatMap(_.body)
+      val newStatements = newRelevantRules.flatMap(_.body) ++ statementsToSupport
       getRelevantRules(newStatements, remainingRules, relevantRules ++ newRelevantRules)
     }
   }
 
-  final def getNewOpponentArgs(implicit dSAuto: DisputeStateAuto2, framework: Framework): DisputeStateAuto2 = {
+  final def getNewOpponentArgs(implicit dSAuto: DisputeStateAuto2, framework: Framework, potentialMoves: Map[MoveType, Seq[PotentialMove2]]): DisputeStateAuto2 = {
 
     // TODO: options
     implicit val dState: DisputeState = dSAuto.dState
 
-                                    // TODO: here actual pass the advancement type
+                                    // TODO: here actually pass the advancement type
     val statementsToExpand = OB1Move.validRuleHeads(dAdvancementType)(framework, dSAuto.dState)
     val contrariesAttackingDefences = OB2Move.validRuleHeads(dAdvancementType)(framework, dSAuto.dState)
+    // TODO: also OF2 moves!!!
 
     val statementsTogether = statementsToExpand ++ contrariesAttackingDefences
 
     if (statementsTogether.isEmpty) dSAuto
     else {
       // TODO: put choosing inside this function
-      findAllCompleteArgumentsForStatementOpponent(statementsTogether)
+      findAllCompleteArgumentsForStatementOpponent(statementsTogether, potentialMoves)
     }
 
   }
@@ -182,11 +216,7 @@ case class InteractiveReasoner(
 
     implicit val dState = dSAuto.dState
 
-    val allPossibleMoves = possibleOpponentMoveTypes
-      // TODO: here add actual advancement type
-      .flatMap(Move(_).isPossible(dAdvancementType))
-
-    val possibleMoves = possibleOpponentMoveTypes
+    val possibleMoves = Seq(OB1, OB2, OF1) // TODO: AD HOC hot fix!!! (there is no OF2 move)
       // TODO: here add actual advancement type
       .flatMap(Move(_).isPossible(dAdvancementType).map(move => move.asInstanceOf[PotentialRuleMove]))
       .filter { move => rules.contains(move.rule) } // take only those that are relevant
@@ -200,7 +230,8 @@ case class InteractiveReasoner(
 
   }
 
-  private def findAllCompleteArgumentsForStatementOpponent(statements: Set[String]) // TODO: here set of statements
+  private def findAllCompleteArgumentsForStatementOpponent(statements: Set[String],
+                                                           potentialMoves: Map[MoveType, Seq[PotentialMove2]]) // TODO: here set of statements
                                                         (implicit dSAuto: DisputeStateAuto2,
                                                           framework: Framework): DisputeStateAuto2 = {
 
@@ -244,12 +275,42 @@ case class InteractiveReasoner(
       (stmt, set.map(_._2))
     } }.toMap
 
-    // TODO: this should be done easier
-    val randomKeys = Random.shuffle(targetSet2.keys.toList).take(oppCount)
-    val chosenStatementMap = targetSet2.filter { case (stmt, _) => randomKeys.contains(stmt) }
-    val chosenArgs = chosenStatementMap.map { case (k, v) => (k, Random.shuffle(v).take(oppArgCount)) }
-    val rulesFlattened = chosenArgs.flatMap(_._2).flatten.toSet
-    constructDSBasedOnRules(dSAuto, rulesFlattened)
+    // TODO: prettier
+    //  of2 moves
+    val of2MovesMap = if (potentialMoves.contains(OF2)) {
+      potentialMoves(OF2).map {
+        case assMove:PotentialAssumptionMove => (assMove.assumption, assMove)
+      }.toMap
+    } else Map.empty[String, PotentialAssumptionMove]
+
+    val ruleArgumentsStatements = targetSet2.keySet.toList
+    val assumptionMovesStatement = of2MovesMap.keySet.toList
+
+    val totalKeys = ruleArgumentsStatements ++ assumptionMovesStatement
+    if (totalKeys.isEmpty) dSAuto
+    else {
+
+      val randomKey = Random.shuffle(totalKeys).head
+
+      if (assumptionMovesStatement.contains(randomKey)) {
+        DisputeStateAuto2(of2MovesMap(randomKey))
+      } else {
+        // TODO: this should be done easier
+        // TODO: i changed it to allow only a single arg
+        //val randomKeys = Random.shuffle(targetSet2.keys.toList).take(oppCount) // ...
+        //val chosenStatementMap = targetSet2.filter { case (stmt, _) => randomKeys.contains(stmt) }
+
+        val randomArgumentRules = Random.shuffle(targetSet2(randomKey).toList).head
+
+        //val chosenArgs = chosenStatementMap.map { case (k, v) => (k, Random.shuffle(v).take(oppArgCount)) }
+        //val rulesFlattened = chosenArgs.flatMap(_._2).flatten.toSet
+        // TODO: This probably will not be necessary (i mean not in such complicated form)
+        //constructDSBasedOnRules(dSAuto, rulesFlattened)
+        constructDSBasedOnRules(dSAuto, randomArgumentRules)
+      }
+    }
+
+
 
 
     //val int = 123
@@ -267,34 +328,34 @@ case class InteractiveReasoner(
 //    constructDSBasedOnRules(dSAuto, rulesFlattened)
   }
 
-  def canMove(implicit framework: Framework,
-              dState: DisputeState,
-              tCriteria: TerminationCriteriaType,
-              dAdvancement: DisputeAdvancementType): (Boolean, Boolean) = {
+//  def canMove(implicit framework: Framework,
+//              dState: DisputeState,
+//              tCriteria: TerminationCriteriaType,
+//              dAdvancement: DisputeAdvancementType): (Boolean, Boolean) = {
+//
+//    val newDSAuto = new DisputeStateAuto2(dState, Set.empty, Set.empty, Nil, tCriteria, dAdvancement, None)
+//
+//    val newStateAutoP = getNewProponentArgs(newDSAuto, framework, Some(1))
+//    val newStateAutoO = getNewOpponentArgs(newDSAuto, framework)
+//
+//    val possibleProp = newStateAutoP.performedMoves.nonEmpty
+//    val possibleOpp = newStateAutoO.performedMoves.nonEmpty
+//
+//    (possibleProp, possibleOpp)
+//
+//  }
 
-    val newDSAuto = new DisputeStateAuto2(dState, Set.empty, Set.empty, Nil, tCriteria, dAdvancement, None)
-
-    val newStateAutoP = getNewProponentArgs(newDSAuto, framework, Some(1))
-    val newStateAutoO = getNewOpponentArgs(newDSAuto, framework)
-
-    val possibleProp = newStateAutoP.performedMoves.nonEmpty
-    val possibleOpp = newStateAutoO.performedMoves.nonEmpty
-
-    (possibleProp, possibleOpp)
-
-  }
-
-  def checkIfOver(implicit framework: Framework,
-                  dState: DisputeState): Option[Boolean] = {
-
-    val (possibleProp, possibleOpp) = canMove(framework, dState, tCriteriaType, dAdvancementType)
-
-    (TerminationCriteria.proponentSeemsToBeWinning(framework, dState, tCriteriaType), possibleProp, possibleOpp) match {
-      case (true, _, false) => Some(true)
-      case (false, false, _) => Some(false)
-      case _ => None
-    }
-  }
+//  def checkIfOver(implicit framework: Framework,
+//                  dState: DisputeState): Option[Boolean] = {
+//
+//    val (possibleProp, possibleOpp) = canMove(framework, dState, tCriteriaType, dAdvancementType)
+//
+//    (TerminationCriteria.proponentSeemsToBeWinning(framework, dState, tCriteriaType), possibleProp, possibleOpp) match {
+//      case (true, _, false) => Some(true)
+//      case (false, false, _) => Some(false)
+//      case _ => None
+//    }
+//  }
 
 
 }

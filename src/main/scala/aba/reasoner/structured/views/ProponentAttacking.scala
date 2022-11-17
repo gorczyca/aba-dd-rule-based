@@ -4,10 +4,12 @@ import aba.framework.{Contrary, Framework}
 import aba.move.Move.{PB2, PF2}
 import aba.move.{PB2Move, PF2Move}
 import aba.reasoner.argumentBased2.{ArgumentTree, DisputeStateAB2}
-import aba.reasoner.structured.StructuredReasoner
+import aba.reasoner.structured.{ArgumentsToChooseFrom, StatementsToChooseFrom, StatementsWithinArgumentToChooseFrom, StructuredReasoner}
 import aba.reasoner.{DisputeState, PotentialMove2}
 import interface.ProgramState
 import aba.reasoner.structured.StructuredReasoner.{digitRegex, indicesRegex, zippedToString}
+import interface.InputProcessorInterface.getUserInput
+import interface.dotConverters.ABRepresentationInterface.generateABRepresentation
 
 import scala.annotation.tailrec
 import scala.util.matching.Regex
@@ -27,8 +29,11 @@ object ProponentAttacking extends View {
     println("\tUNBLOCKED DEFENCES CONTRARIES:")
     println(zippedToString(contrariesZipped))
 
+    generateABRepresentation(highlightedData = Some(StatementsToChooseFrom(playedUnblockedDefencesContraries, proponent = false)))
+
+
     // TODO: all of that should be in some interface
-    val read = Console.in.readLine
+    val read = getUserInput
     read match {
       case "b" => StructuredReasoner.run
       case "" =>
@@ -64,7 +69,9 @@ object ProponentAttacking extends View {
     println("Argument view:")
     println(zippedToString(argsZipped))
 
-    Console.in.readLine match {
+    generateABRepresentation(highlightedData = Some(ArgumentsToChooseFrom(argsFiltered, proponent = false)))
+
+    getUserInput match {
       case "" =>
         statementsView(args)(goals)
       case "b" => goalView
@@ -92,11 +99,12 @@ object ProponentAttacking extends View {
     val dState = programState.currentDState
     val culpritCandidates = arguments.flatMap(arg => arg.rulesUsed.flatMap(_.statements) + arg.root.statement) intersect framework.assumptions
 
+    generateABRepresentation(highlightedData = Some(StatementsWithinArgumentToChooseFrom(arguments, culpritCandidates, proponent = false)))
+
     val candidatesZipped = culpritCandidates.toList.zipWithIndex
     println(zippedToString(candidatesZipped))
 
-    val read = Console.in.readLine
-    read match {
+    getUserInput match {
       case "" =>
         moveView(culpritCandidates)(arguments, backtracking)
       case "b" => argumentView(backtracking)
@@ -120,6 +128,7 @@ object ProponentAttacking extends View {
 
     println("Rule/assumption view:")
 
+    generateABRepresentation(highlightedData = Some(StatementsWithinArgumentToChooseFrom(backtracking1, statements, proponent = false)))
 
     implicit val framework: Framework = programState.framework
     implicit val dState: DisputeState = programState.currentDState
@@ -146,8 +155,7 @@ object ProponentAttacking extends View {
 
     println(zippedToString(allMovesZipped))
 
-    val read = Console.in.readLine
-    read match {
+    getUserInput match {
       case "" =>
         println("Choose move to perform")
         moveView(statements)(backtracking1, backtracking2)

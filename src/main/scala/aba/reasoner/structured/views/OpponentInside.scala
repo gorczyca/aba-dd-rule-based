@@ -1,13 +1,15 @@
 package aba.reasoner.structured.views
 
 import aba.framework.Framework
-import aba.move.Move.OB1
-import aba.move.OB1Move
+import aba.move.Move.{OB1, PB1}
+import aba.move.{OB1Move, PB1Move}
 import aba.reasoner.DisputeState
 import aba.reasoner.argumentBased2.{ArgumentTree, DisputeStateAB2}
-import aba.reasoner.structured.StructuredReasoner
+import aba.reasoner.structured.{ArgumentsToChooseFrom, StatementsToChooseFrom, StatementsWithinArgumentToChooseFrom, StructuredReasoner}
 import interface.ProgramState
 import aba.reasoner.structured.StructuredReasoner.{digitRegex, indicesRegex, zippedToString}
+import interface.InputProcessorInterface.getUserInput
+import interface.dotConverters.ABRepresentationInterface.generateABRepresentation
 
 import scala.annotation.tailrec
 import scala.util.matching.Regex
@@ -29,9 +31,11 @@ object OpponentInside extends View {
     println("\tGOALS:")
     println(zippedToString(contrariesZipped))
 
+    generateABRepresentation(highlightedData = Some(StatementsToChooseFrom(pendingDefencesContraries, proponent = false)))
+
+
     // TODO: all of that should be in some interface
-    val read = Console.in.readLine
-    read match {
+    getUserInput match {
       case "b" => StructuredReasoner.run
       case "" =>
         argumentView(pendingDefencesContraries)
@@ -65,8 +69,10 @@ object OpponentInside extends View {
     println("Argument view:")
     println(zippedToString(argsZipped))
 
-    val read = Console.in.readLine
-    read match {
+    generateABRepresentation(highlightedData = Some(ArgumentsToChooseFrom(args, proponent = false)))
+
+
+    getUserInput match {
       case "" =>
         statementsView(args)(goals)
       case "b" => goalView
@@ -90,14 +96,24 @@ object OpponentInside extends View {
 
     val dState = programState.currentDState
     val framework = programState.framework
-    val statementsToFurtherExpand = (arguments.flatMap(arg => arg.rulesUsed.flatMap(_.statements) + arg.root.statement) diff dState.bUnblockedCompletePlayedStatements) diff framework.assumptions
+    val stmts = (arguments.flatMap(arg => arg.rulesUsed.flatMap(_.statements) + arg.root.statement) diff dState.bUnblockedCompletePlayedStatements) diff framework.assumptions
+    val statementsFromBackwardMoves = if (programState.possibleMoves.contains(OB1)) {
+      programState.possibleMoves(OB1).map {
+        case m: OB1Move => m.rule.head
+      }.toSet
+    } else Set.empty[String]
+
+    val statementsToFurtherExpand = stmts intersect statementsFromBackwardMoves
+
+
+    generateABRepresentation(highlightedData = Some(StatementsWithinArgumentToChooseFrom(arguments, statementsToFurtherExpand, proponent = false)))
+
 
     println("Statement view:")
     val statementsZipped = statementsToFurtherExpand.toList.zipWithIndex
     println(zippedToString(statementsZipped))
 
-    val read = Console.in.readLine
-    read match {
+    getUserInput match {
       case "" =>
         moveView(statementsToFurtherExpand)(arguments, backtracking)
       case "b" => argumentView(backtracking)
@@ -124,7 +140,9 @@ object OpponentInside extends View {
 
     println("Rule/assumption view:")
 
+    generateABRepresentation(highlightedData = Some(StatementsWithinArgumentToChooseFrom(backtracking1, statements, proponent = false)))
 
+    //
     val relevantMoves = programState.possibleMoves(OB1).filter {
       case OB1Move(rule, _) => statements.contains(rule.head)
     }
@@ -132,8 +150,7 @@ object OpponentInside extends View {
     val relevantMovesZipped = relevantMoves.zipWithIndex
     println(zippedToString(relevantMovesZipped))
 
-    val read = Console.in.readLine
-    read match {
+    getUserInput match {
       case "" =>
         println("Choose move to perform")
         moveView(statements)(backtracking1, backtracking2)

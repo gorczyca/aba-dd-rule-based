@@ -43,7 +43,9 @@ case class DisputeStateAuto2(dState: DisputeState,
                             currentAdvancementType: DisputeAdvancementType,
                             proponentsStatementsToProveOpt: Option[Set[String]] = None
                             ) {
-  def performedMovesToString: List[String] =
-    performedMoves.zipWithIndex.map { case (arg, index) => s"${index + 1}: [${arg.toString}]" }
+  def performedMovesToString(initialVal: Int = 0): List[String] = {
+    val numberLength = performedMoves.length.toString.length
+    performedMoves.zipWithIndex.map { case (arg, index) => s"%0${numberLength}d".format(index + 1 + initialVal) + s": [${arg.toString}]" }
+  }
 }
 

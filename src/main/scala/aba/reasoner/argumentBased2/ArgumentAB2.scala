@@ -30,7 +30,24 @@ class ArgumentNode(val statement: String,
                    val children: Set[ArgumentNode],
                    val factNode: Boolean = false) {
 
+
+  def canEqual(a: Any) = a.asInstanceOf[ArgumentNode]
+
+  // TODO: just added
+  override def equals(obj: Any): Boolean = {
+    obj match {
+      case that: ArgumentNode => that.statement == this.statement && that.children == this.children
+    }
+  }
+
+  override def hashCode(): Int = statement.hashCode
+
+
+
+
   // TODO: this better, with the UUIDs
+
+
 
   val uuid: String = UUID.randomUUID().toString.replace('-', '_')
 
@@ -171,6 +188,10 @@ class ArgumentNode(val statement: String,
   }
 }
 object ArgumentTree {
+
+
+
+
   def apply(argumentNode: ArgumentNode): ArgumentTree = {
     new ArgumentTree(argumentNode, Map(argumentNode -> Set.empty[Rule]), Set.empty[Rule], uuid = newUuid)
   }
@@ -203,6 +224,12 @@ class ArgumentTree(val root: ArgumentNode,
                    val circularArgs: Option[Set[ArgumentNode]] = None,
                    val uuid: String) {
 
+
+  override def equals(obj: Any): Boolean = obj match {
+    case that: ArgumentTree => that.root == this.root
+  }
+
+  override def hashCode(): Int = root.hashCode()
 
 
 //  override def toString: String = s"${root.toString}\nENDPOINTS:\n${endpoints.map{ case (argNode, rules) => s"${argNode.data}: {${rules.mkString(",")}}" }}\nuid"
