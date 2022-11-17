@@ -3,6 +3,8 @@ package interface.reasoners
 
 import aba.reasoner.automatic2.DisputeStateAuto2
 import aba.reasoner.{DisputeState, PotentialMove2}
+import interface.InputProcessorInterface.getUserInput
+import interface.dotConverters.ABRepresentationInterface.generateABRepresentation
 import interface.ProgramState
 
 import scala.annotation.tailrec
@@ -45,28 +47,50 @@ object AutomaticReasonerInterface {
 
         case (Nil, list@successfulHead::_, _, duration) =>
           println(s"Finished in $duration")
-          println(successfulHead.performedMovesToString.mkString("\n"))
+
+          //programState.performedMoves.size
+
+          println(successfulHead.performedMovesToString(programState.performedMoves.size).mkString("\n"))
           // TODO: uncomment that
           //println(s" All successful found: ${list.size}")
-          val defences = list.map(_.dState.defences).toSet
+          //val defences = list.map(_.dState.defences).toSet
           //println(s" Distinct defences: ${defences.size}")
           //println(defences.toList.sortBy(_.size).map(group => s"""[ ${group.mkString(",")} ]""").mkString("\n"))
           (successfulHead.performedMoves, successfulHead.dState)
 
         case (restDS, successfulHead :: _, _, duration) =>
           println(s"Successful derivation found in $duration.")
-          println(successfulHead.performedMovesToString.mkString("\n"))
+          generateABRepresentation(over = Some(true))(programState.copy(currentDState = successfulHead.dState))
+          println(successfulHead.performedMovesToString().mkString("\n"))
           println("Press ENTER to finish, ; to find another one")
-          Console.in.readLine match {
+          getUserInput match {
             case ";" => findSuccessfulDerivationsRec2(restDS)
             case _ => (successfulHead.performedMoves, successfulHead.dState)
           }
         case (statesAfterNMoves, Nil, _, _) => // TODO: at worst add if to the case
+
+          // TODO: when doing this, we do not want ignoring moves, because it does not say anything
+          //  possible fixes:
+          //  1) filter out ingoring moves
+          //  2) allow them, but indicate this
+
           performNMoves match {
             case Some(n) =>
               println(s"${n} moves performed.")
               val chosenState = statesAfterNMoves.head
-              println(chosenState.performedMovesToString.mkString("\n"))
+              println(chosenState.performedMovesToString().mkString("\n"))
+
+              val numberLength = chosenState.performedMoves.length.toString.length
+              val movesNumber = chosenState.performedMoves.length
+              if ((chosenState.ignoredProponentAssumptions ++ chosenState.ignoredCulpritCandidates).nonEmpty) {
+                chosenState.ignoredProponentAssumptions.zipWithIndex.foreach {
+                  case (ass, index) => println(s"%0${numberLength}d".format(index + 1 + movesNumber) + s": Ignored prop. assumption\t[${ass}]")
+                }
+                val ignoredPropAssumptionsSize = chosenState.ignoredProponentAssumptions.size
+                chosenState.ignoredCulpritCandidates.zipWithIndex.foreach {
+                  case (ass, index) => println(s"%0${numberLength}d".format(index + 1 + movesNumber + ignoredPropAssumptionsSize) + s": Ignored culprit candidate\t[${ass}]")
+                }
+              }
               (chosenState.performedMoves, chosenState.dState)
           }
       }
@@ -76,7 +100,8 @@ object AutomaticReasonerInterface {
 
     programState.copy(
       performedMoves = programState.performedMoves ++ newPerformedMoves,
-      currentDState = newDState
+      currentDState = newDState,
+      redraw = false
     )
   }
 }

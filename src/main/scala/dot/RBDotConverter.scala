@@ -2,6 +2,7 @@ package dot
 
 import aba.framework.{Contrary, Framework, Rule}
 import aba.reasoner.DisputeState
+import dot.ABDotConverter.getLabel
 
 import java.io.PrintWriter
 
@@ -53,8 +54,27 @@ object RBDotConverter {
   private val oppAttackArrowColor = """ color="red:white:red"  """
 
 
-  def exportDotRepr(gradientFill: Boolean = true, outputFileName: String = "temp_rule.dot")(implicit dState: DisputeState, framework: Framework): Unit = {
-    val reprString = getDotString(gradientFill)
+  def getRuleLabel(rule: Rule): String = {
+
+    val maxLength = 7
+    val arrow = "←"
+    val initialElems = if (rule.head.length > maxLength) List(rule.head + s" $arrow ") else List(rule.head, s"$arrow ")
+
+   rule.body.foldLeft(initialElems) { (acc, next) =>
+      if (acc.last.length > maxLength) {
+          acc :+ next
+      } else {
+        val lastElem = acc.last
+        val newElem = if (lastElem.trim ==arrow) lastElem + next else lastElem + ", " + next
+        acc.dropRight(1) :+ newElem
+      }
+    }.mkString("\n")
+
+    //"a"
+  }
+
+  def exportDotRepr(gradientFill: Boolean = true, outputFileName: String = "temp_rule.dot", showBlocked: Boolean = false)(implicit dState: DisputeState, framework: Framework): Unit = {
+    val reprString = getDotString(gradientFill, outputFileName, showBlocked)
 
     new PrintWriter(outputFileName) { write(reprString); close() }
   }
@@ -111,7 +131,7 @@ object RBDotConverter {
        |}""".stripMargin
   }
 
-  private def getDotString(gradientFill: Boolean = true, outputFileName: String = "output_rule.dot")
+  private def getDotString(gradientFill: Boolean = true, outputFileName: String = "output_rule.dot", showBlocked: Boolean = false)
                           (implicit dState: DisputeState, framework: Framework): String = {
 
     implicit val isGradientFill: Boolean = gradientFill
@@ -120,17 +140,20 @@ object RBDotConverter {
       case Rule(_, _, body) => (body intersect dState.culprits).nonEmpty
     }
 
-    val statementsNodes = (dState.bStatements ++ allBlockedRules.flatMap(_.statements)).map { st =>
+    val statements = if (showBlocked) dState.bStatements ++ allBlockedRules.flatMap(_.statements) else dState.bStatements
+
+
+    val statementsNodes = statements.map { st =>
       s"${getUid(st)} [ " +
-        s"""label="$st", """  +
+        s"""label="${getLabel(st)}", """  +
         s"""fillcolor="${ st match {
           case s if framework.goals.contains(s) => goalColor
           case s if dState.defences.contains(s) => defencesColor
-          case s if dState.culprits.contains(s) => culpritColor
+          case s if dState.culprits.contains(s) => culpritColor // should not happen if we don't show blocked
           case s if framework.assumptions.contains(s) => unAttackedOpponentsAssumptionsColor
           case s if dState.pStatements.contains(s) => proponentColor
-          case s if dState.bPlayedBlockedStatements(s) => blockedColor
-          case s if !dState.bStatements.contains(s) => blockedRemainingRulesColor
+          case s if dState.bPlayedBlockedStatements(s) => blockedColor // should not happen if we don't show blocked
+          case s if !dState.bStatements.contains(s) => blockedRemainingRulesColor // should not happen if we don't show blocked
           case _ => opponentColor
         }
         }",""" +
@@ -141,11 +164,11 @@ object RBDotConverter {
           }}  ] "
     }
 
-    val consideredRules = dState.bRules ++ allBlockedRules
+    val consideredRules = if (showBlocked) dState.bRules ++ allBlockedRules else dState.bRules
 
     val rulesNodes = consideredRules.map(rule =>
       s"${getUid(rule)} [ " +
-        s"""label="${rule.toString}", """  +
+        s"""label="${getRuleLabel(rule)}", """  +
         s"""fillcolor="${
           rule match {
             case r if dState.pRules.contains(r) => proponentColor
@@ -191,19 +214,28 @@ object RBDotConverter {
       case r@Rule(_, head, _) => s"""${getUid(r)} -> ${getUid(head)}p"""
     }
 
+    val additionalCulprits = if (showBlocked) (dState.culprits -- dState.bStatements) else Set.empty[String]
 
-    val nonUsedCulpritsNodes = (dState.culprits -- dState.bStatements).map { st =>
+    val nonUsedCulpritsNodes = additionalCulprits.map { st =>
       s"${getUid(st)} [ " +
-        s"""label="$st", """  +
+        s"""label="${getLabel(st)}", """  +
         s"""fillcolor="$culpritColor" """ +
         s"$assumptionShape ] "
     }
 
-    val proponentsAttackEdges = dState.culprits.map( c =>
+    val culpritAttacked = if (showBlocked) dState.culprits else dState.culprits intersect dState.bStatements
+
+    val proponentsAttackEdges = culpritAttacked.map( c =>
       s"""{ ${(framework.contraries.filter { case Contrary(asm, _) => c == asm }.map(_.contrary) intersect dState.pStatements).map(getUid(_)).mkString(", ")} } -> ${getUid(c)} [ $attackArrowStyle, $propAttackArrowColor ] """
     )
 
-    val opponentAttackEdges = (dState.defenceContraries intersect (dState.bStatements union allBlockedRules.flatMap(_.statements))).map(ctr =>
+    val opponentAttacks = if (showBlocked) {
+      (dState.defenceContraries intersect (dState.bStatements union allBlockedRules.flatMap(_.statements)))
+    } else {
+      dState.defenceContraries intersect dState.bStatements
+    }
+
+    val opponentAttackEdges = opponentAttacks.map(ctr =>
       s"""${getUid(ctr)}  -> { ${(framework.contraries.filter { case Contrary(_, c) => c == ctr }.map(_.assumption) intersect dState.defences).map(getUid(_)).mkString(", ")} } [ $attackArrowStyle, $propAttackArrowColor ] """
     )
 

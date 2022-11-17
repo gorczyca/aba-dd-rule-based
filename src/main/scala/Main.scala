@@ -32,7 +32,10 @@ object Main {
           case Some(goal) => framework.goals = Set(goal)
           case _ =>
         }
-        println("\n\n==============\nDerivation started.\n==============\n")
+        println("\n" +
+          "+=======================+\n" +
+          "|  Derivation started.  |\n" +
+          "+=======================+\n")
 
         framework.isEvenPossible match {
           case (Some(contradictingGoals), _) =>
@@ -61,7 +64,11 @@ object Main {
     if (programState.redraw) {
       val redrawInfo = programState.performedMoves.lastOption match {
         case Some(performedMove) =>
-          val performedMoveInfo = s"${programState.performedMoves.size}: ${performedMove.toString}" //+
+          val performedMoveInfo = s"" +
+            s"+===================================+\n" +
+            s"        Last performed move:\n" +
+            s"${programState.performedMoves.size}: ${performedMove.toString}\n" +
+            s"+===================================+\n"
           //s"\n${currentState.toString}"
           if (programState.showState) s"$performedMoveInfo:\n${currentState.toString}"
           else performedMoveInfo

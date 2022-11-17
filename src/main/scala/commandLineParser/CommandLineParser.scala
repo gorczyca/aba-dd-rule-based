@@ -85,7 +85,7 @@ object CommandLineParser {
             case "l" => TurnChoice2.LargestStatementSet
           }
           c.copy(turnChoice = turnChoice)
-        }),
+        }), // TODO: should be removed?
 
       opt[String]("psc")
         .action((x, c) => {
@@ -99,7 +99,7 @@ object CommandLineParser {
             case "gbce" => StatementChoice2.GBCEager
             case "gbcp" => StatementChoice2.GBCPatient
           }
-          c.copy(pStatementChoice = psc)
+          c.copy(pStatementChoice = psc) // TODO: some reusable mapping
         }),
 
       opt[String]("osc")

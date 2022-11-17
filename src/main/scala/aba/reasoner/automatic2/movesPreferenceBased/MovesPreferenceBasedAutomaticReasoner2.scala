@@ -52,6 +52,21 @@ case class MovesPreferenceBasedAutomaticReasoner2(dfs: Boolean,
                                                   pRuleChoice: RuleChoiceType2,
                                                   oRuleChoice: RuleChoiceType2
                                                  ) extends AutomaticReasoner2(dfs, dAdvancementType, tCriteriaType, startWithAdmissible) {
+  override def toString: String = {
+    s"Search type:\t\t${if (dfs) "DFS" else "BFS"}\n" +
+      s"Start with admissible:\t${booleanToString(startWithAdmissible)}\n" +
+      s"Preference ordering:\t[${preferenceOrdering.mkString(", ")}]\n" +
+      s"Prop. rule head choice:\t${pRuleHeadChoice}\n" +
+      s"Opp. rule head choice:\t${oRuleHeadChoice}\n" +
+      s"Prop. rule choice:\t${pRuleChoice}\n" +
+      s"Opp. rule choice:\t${oRuleChoice}\n" +
+      //s"\n" +
+      s"Advancement type:\t${dAdvancementType}\n" +
+      s"Termination criteria:\t${tCriteriaType}"
+  }
+
+  private def booleanToString(bool: Boolean): String = if (bool) "YES" else "NO"
+
   override protected def generateNewDisputeStates(implicit possibleMoves: Map[MoveType, Seq[PotentialMove2]], framework: Framework, dStateAuto: DisputeStateAuto2): List[DisputeStateAuto2] = {
 
     // get moves by preferred move type

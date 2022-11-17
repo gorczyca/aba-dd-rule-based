@@ -1,10 +1,15 @@
 package interface
 
 import aba.framework.Framework
-import aba.move.DisputeAdvancement.DisputeAdvancementType
-import aba.move.Move.MoveType
+import aba.move.DisputeAdvancement.{DAB, DF, DisputeAdvancementType, DC, DS, DABF}
+import aba.move.TerminationCriteria.{TA, TC, TS}
+import aba.move.Move.{MoveType, OB1, OB2, OF1, OF2, PB1, PB2, PF1, PF2}
 import aba.move.{DisputeAdvancement, Move, TerminationCriteria}
 import aba.move.TerminationCriteria.TerminationCriteriaType
+import aba.reasoner.automatic2.{AutomaticReasoner2, RuleChoice2}
+import aba.reasoner.automatic2.movesPreferenceBased.MovesPreferenceBasedAutomaticReasoner2
+import aba.reasoner.automatic2.movesPreferenceBased.RuleHeadChoice.{LeastRules, MostRules, RandomHead}
+import aba.reasoner.automatic2.statementBased.StatementChoice2
 import aba.reasoner.structured.StructuredReasoner
 import aba.reasoner.{DisputeState, PotentialMove2}
 import dot.DotConverter
@@ -22,8 +27,25 @@ import interface.reasoners.GroundedReasonerInterface.findSuccessfulDerivationsGr
 import interface.CustomImplicits._
 
 import scala.annotation.tailrec
+import scala.io.AnsiColor
 
 object InputProcessorInterface {
+
+  // TODO: green as a constant
+  def getUserInput: String = {
+    print(s"${AnsiColor.GREEN}> ")
+    val input = Console.in.readLine
+    print(AnsiColor.RESET)
+    input
+  }
+
+  // TODO:
+  private def updateReasoners(newReasoner: MovesPreferenceBasedAutomaticReasoner2)(implicit state: ProgramState): ProgramState = {
+    state.copy(
+      automaticReasoner = newReasoner,
+      approximateReasoner = state.approximateReasoner.copy(automaticReasoner2 = newReasoner),
+    )
+  }
 
   def processUserInput(implicit state: ProgramState): ProgramState = {
 
@@ -50,35 +72,47 @@ object InputProcessorInterface {
 
     val possibleMoveTypesStrings = possibleMoves.keys.map(_.toString.toLowerCase()).toSet
 
-    val newState = Console.in.readLine match {
+
+    val newState = getUserInput match {
 
       case "struct" =>
         StructuredReasoner.run
 
-      case s"approx ${p} ${o}" if probabilityRegex.matches(p) && probabilityRegex.matches(o) =>
+      case s"approx ${p} ${o} ${m}" if probabilityRegex.matches(p) && probabilityRegex.matches(o) &&
+        (m == "s" || m == "d") =>
         // TODO
+
+        val static = m == "s"
+
         val propP = p.toDouble
         val oppP = o.toDouble
-        val newApproxReasoner = state.approximateReasoner.copy(proponentP = propP, opponentP = oppP)
+        val newApproxReasoner = state.approximateReasoner.copy(proponentP = propP, opponentP = oppP, static = static)
 
         val newState = state.copy(
           approximateReasoner = newApproxReasoner
         )
 
-        findSuccessfulApproximateDerivation(newState)
-        newState
+        val (perfMoves, newDState) = findSuccessfulApproximateDerivation(newState)
 
-      case "interP" =>
+        state.copy(
+          performedMoves = state.performedMoves ++ perfMoves,
+          currentDState = newDState,
+          redraw = false
+        )
+
+        //newState
+
+      case "ip" =>
         getNewStateInteractively(proponentsMove = true)
 
-      case "interO" =>
+      case "io" =>
         getNewStateInteractively(proponentsMove = false)
 
-      case "auto 1" =>
+      case "auto" =>
         findSuccessfulDerivations2(onlyOne = true)
 
-      case "auto" =>
-        findSuccessfulDerivations2(onlyOne = false)
+      //case "auto" => // TODO:
+      //  findSuccessfulDerivations2(onlyOne = false)
 
       case "pref" =>
         // TODO: return the state, allow to find one only or more
@@ -93,35 +127,155 @@ object InputProcessorInterface {
         framework.goals = Set(goal)
         state
 
+      case "strat" =>
+       println( s"+-------------------+\n" +
+                s"|  Chosen strategy: |\n" +
+                s"+-------------------+\n"
+                )
+        println(state.automaticReasoner.toString)
+        state
+
+        // TODO: somehow propagate this to ALL reasoners
+      case "dfs 1" =>
+        println("Search type: DFS")
+        val newReasoner = state.automaticReasoner.copy(dfs = true)
+        updateReasoners(newReasoner)
+
+      case "dfs 0" =>
+        println("Search type: BFS")
+        val newReasoner = state.automaticReasoner.copy(dfs = false)
+        updateReasoners(newReasoner)
+
+      case "swa 1" =>
+        println("Start with adissible: YES")
+        val newReasoner = state.automaticReasoner.copy(startWithAdmissible = true)
+        updateReasoners(newReasoner)
+
+      case "swa 0" =>
+        println("Start with adissible: NO")
+        val newReasoner = state.automaticReasoner.copy(startWithAdmissible = false)
+        updateReasoners(newReasoner)
+
+      case s"phc $x" =>
+        val phc  = x.toLowerCase match {
+          case "m" => MostRules
+          case "l" => LeastRules
+          case "r" => RandomHead
+          case _ =>
+            println("Invalid.")
+            MostRules
+        }
+
+        println(s"Prop. rule head choice: $phc")
+        val newReasoner = state.automaticReasoner.copy(pRuleHeadChoice = phc)
+        updateReasoners(newReasoner)
+
+      case s"ohc $x" =>
+        val ohc  = x.toLowerCase match {
+          case "m" => MostRules
+          case "l" => LeastRules
+          case "r" => RandomHead
+          case _ =>
+            println("Invalid.")
+            MostRules
+        }
+
+        println(s"Opp. rule head choice: $ohc")
+        val newReasoner = state.automaticReasoner.copy(oRuleHeadChoice = ohc)
+        updateReasoners(newReasoner)
+
+      case s"prc $x" =>
+        val prc = x.toLowerCase match {
+          case "bmin" => RuleChoice2.BodyMin
+          case "bmax" => RuleChoice2.BodyMax
+          case "smin" => RuleChoice2.NewlyIntroducedStatementsMin
+          case "smax" => RuleChoice2.NewlyIntroducedStatementsMax
+          case "amin" => RuleChoice2.NewlyIntroducedAssumptionsMin
+          case "amax" => RuleChoice2.NewlyIntroducedAssumptionsMax
+          case "l1s" => RuleChoice2.LookAhead1Step
+          case _ =>
+            println("Invalid.")
+            RuleChoice2.BodyMin
+        }
+        println(s"Prop. rule choice: $prc")
+        val newReasoner = state.automaticReasoner.copy(pRuleChoice = prc)
+        updateReasoners(newReasoner)
+
+      case s"orc $x" =>
+        val orc = x.toLowerCase match {
+          case "bmin" => RuleChoice2.BodyMin
+          case "bmax" => RuleChoice2.BodyMax
+          case "smin" => RuleChoice2.NewlyIntroducedStatementsMin
+          case "smax" => RuleChoice2.NewlyIntroducedStatementsMax
+          case "amin" => RuleChoice2.NewlyIntroducedAssumptionsMin
+          case "amax" => RuleChoice2.NewlyIntroducedAssumptionsMax
+          case "l1s" => RuleChoice2.LookAhead1Step
+          case _ =>
+            println("Invalid.")
+            RuleChoice2.BodyMin
+        }
+        println(s"Opp. rule choice: $orc")
+        val newReasoner = state.automaticReasoner.copy(oRuleChoice = orc)
+        updateReasoners(newReasoner)
+
+      case s"order $x" =>
+        val possibleMovesSet = Set(PB1, PB2, PF1, PF2, OB1, OB2, OF1, OF2).map(_.toString.toLowerCase())
+        val movesSeqString = x.toLowerCase.replaceAll("\\s","").grouped(3).toList
+
+        if (possibleMovesSet != movesSeqString.toSet) {
+          println("Invalid ordering. Specify all 8 moves in an order.")
+          state
+        } else {
+
+          val movesSeq = movesSeqString.map(Move.fromString)
+          // make sure all are in there, OF1 should nevertheless be irrelevant
+          //val seq = if (movesSeq.contains(OF1)) movesSeq else OF1 +: movesSeq
+          println(s"Preference ordering: [${movesSeq.mkString(", ")}]")
+          val newReasoner = state.automaticReasoner.copy(preferenceOrdering = movesSeq)
+          updateReasoners(newReasoner)
+        }
+
       case "arg" =>
         val fileName = s"arg_dot_repr_step$stateId.dot"
         generateABRepresentation(outputFileName = fileName)
         println(s"Argument-based representation exported to: $fileName")
-        state
+        state.copy(redraw = false)
       case s"arg $fileName" =>
         generateABRepresentation(outputFileName = fileName)
         println(s"Argument-based representation exported to: $fileName")
-        state
+        state.copy(redraw = false)
       case s"argp 1" =>
         println(s"Continuous argument representation generation switched ON.")
-        state.copy(generatedArg = true)
+        state.copy(
+          generatedArg = true,
+          redraw = false)
       case s"argp 0" =>
         println(s"Continuous argument representation generation switched OFF.")
-        state.copy(generatedArg = false)
+        state.copy(
+          generatedArg = false,
+          redraw = false)
 
       case s"rule" =>
         val fileName = s"rule_dot_repr_step$stateId.dot"
         generateRuleRepresentation(outputFileName = fileName)
         println(s"Rule representation exported to: $fileName")
-        state
+        state.copy(redraw = false)
       case "?" =>
-        println(s"Possible moves:\n${Move.possibleMovesToString(possibleMoves)}\n")
+        println(
+          s"+-------------------+\n" +
+          s"|  Possible moves:  |\n" +
+          s"+-------------------+\n" +
+          s"\n" +
+          s"${Move.possibleMovesToString(possibleMoves)}\n")
         state.copy(redraw = false)
       case "??" =>
         println(s"Possible moves according to all dispute advancements:\n${Move.possibleMovesAccordingToAllAdvancementToString}\n")
         state
       case "q" | "quit" =>
         state.copy(quit = true)
+      case "state" =>
+        print(currentDState.toString)
+        state
       case "state 0" =>
         state.copy(showState = false)
       case "state 1" =>
@@ -137,10 +291,23 @@ object InputProcessorInterface {
       case "d" =>
         printDecoratorInformation()
         state
-      case "i" | "info" =>
+      case "i" =>
         println(s"Advancement type: $currentDAdvancement")
         println(s"Termination criteria type: $currentTCriteria")
-        state
+        state.copy(redraw=false)
+      case "info" =>
+        // TODO: cleaner
+        println("Available advancement types:\n" +
+          s"${if (currentDAdvancement == DAB)"*" else ""}\tDAB\n" +
+          s"${if (currentDAdvancement == DABF)"*" else ""}\tDABF\n" +
+          s"${if (currentDAdvancement == DC)"*" else ""}\tDC\n" +
+          s"${if (currentDAdvancement == DS)"*" else ""}\tDS\n" +
+          s"${if (currentDAdvancement == DF)"*" else ""}\tDF\n" +
+          "Available termination criteria:\n" +
+          s"${if (currentTCriteria == TA)"*" else ""}\tTA\n" +
+          s"${if (currentTCriteria == TC)"*" else ""}\tTC\n" +
+          s"${if (currentTCriteria == TS )"*" else ""}\tTS")
+        state.copy(redraw = false)
       case "a" | "assumptions" =>
         print(s"Assumptions: { ${framework.assumptions.mkString("; ")} }\n")
         //println(s"Assumptions: \n\t${framework.decorateAssumptions.map(_._2).mkString("; ")}\n")
@@ -155,7 +322,9 @@ object InputProcessorInterface {
         state
       case "moves" =>
         // TODO:
-        println(state.performedMoves.zipWithIndex.map { case (arg, index) => s"${index+1}: [$arg]" }.mkString("\n"))
+
+        val numberLength = state.performedMoves.length.toString.length
+        println(state.performedMoves.zipWithIndex.map { case (arg, index) => s"%0${numberLength}d".format(index + 1) + s": [$arg]" }.mkString("\n"))
 
         //???
         // TODO
@@ -212,6 +381,7 @@ object InputProcessorInterface {
         state
 
       case "b" =>
+
         val (newPerformedMoves, newPerformedMovesChunks, newDState) =
           backward(state.performedMoves, state.performedMovesChunks)
 
@@ -219,7 +389,7 @@ object InputProcessorInterface {
           performedMoves = newPerformedMoves,
           performedMovesChunks = newPerformedMovesChunks,
           currentDState = newDState,
-          interactiveOver = state.interactiveReasoner.checkIfOver(state.framework, newDState)
+          //interactiveOver = state.interactiveReasoner.checkIfOver(state.framework, newDState)
         )
       case "bb" =>
 
@@ -227,7 +397,7 @@ object InputProcessorInterface {
           performedMoves = Nil,
           performedMovesChunks = Nil,
           currentDState = DisputeState.initial,
-          interactiveOver = None // TODO:
+          //interactiveOver = None // TODO:
         )
       case s"b $x" if digitRegex.matches(x) =>
         val (newPerformedMoves, newPerformedMovesChunks, newDState) = backward(state.performedMoves, state.performedMovesChunks, n=x.toInt)
@@ -236,7 +406,7 @@ object InputProcessorInterface {
           performedMoves = newPerformedMoves,
           performedMovesChunks = newPerformedMovesChunks,
           currentDState = newDState,
-          interactiveOver = state.interactiveReasoner.checkIfOver(state.framework, newDState)
+          //interactiveOver = state.interactiveReasoner.checkIfOver(state.framework, newDState)
         )
 
       case "bi" =>
@@ -246,7 +416,7 @@ object InputProcessorInterface {
           performedMoves = newPerformedMoves,
           performedMovesChunks = newPerformedMovesChunks,
           currentDState = newDState,
-          interactiveOver = state.interactiveReasoner.checkIfOver(state.framework, newDState)
+          //interactiveOver = state.interactiveReasoner.checkIfOver(state.framework, newDState)
         )
       case s"bi $x" if digitRegex.matches(x) =>
         val (newPerformedMoves, newPerformedMovesChunks, newDState) = backwardChunk(state.performedMovesChunks, n=x.toInt)
@@ -255,7 +425,7 @@ object InputProcessorInterface {
           performedMoves = newPerformedMoves,
           performedMovesChunks = newPerformedMovesChunks,
           currentDState = newDState,
-          interactiveOver = state.interactiveReasoner.checkIfOver(state.framework, newDState)
+          //interactiveOver = state.interactiveReasoner.checkIfOver(state.framework, newDState)
         )
       case s"b $x" =>
         print(s"Number required, $x passed.")
@@ -264,6 +434,7 @@ object InputProcessorInterface {
         println(s"Termination criteria set to: ${newCriteria.toUpperCase()}")
 
         state.copy(
+          redraw = false,
           tCriteria = newCriteria,
           automaticReasoner = state.automaticReasoner.copy(tCriteriaType = newCriteria), // TODO: also change other
           approximateReasoner = state.approximateReasoner.copy(
@@ -274,10 +445,11 @@ object InputProcessorInterface {
 
       case s"ct $newCriteria" if !terminationCriteriaTypesStrings.contains(newCriteria.toLowerCase) =>
         println(s"No termination criteria of type: $newCriteria")
-        state.copy(tCriteria = newCriteria)
+        state.copy(redraw = false)
       case s"ca $newAdvancement" if advancementTypesStrings.contains(newAdvancement.toLowerCase) =>
         println(s"Advancement type set to ${newAdvancement.toUpperCase()}")
         state.copy(
+          redraw=false,
           dAdvancement = newAdvancement,
           automaticReasoner = state.automaticReasoner.copy(dAdvancementType = newAdvancement), // TODO: also change other
           approximateReasoner = state.approximateReasoner.copy(
@@ -287,7 +459,9 @@ object InputProcessorInterface {
         )
       case s"ct $newAdvancement" if !terminationCriteriaTypesStrings.contains(newAdvancement.toLowerCase) =>
         println(s"No advancement of type: $newAdvancement")
-        state
+        state.copy(
+          redraw = false
+        )
       case s"$move" if possibleMoveTypesStrings.contains(move.toLowerCase()) =>
         val moveToPerform = possibleMoves(move).random
         state.copy(

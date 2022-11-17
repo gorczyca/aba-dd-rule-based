@@ -4,19 +4,21 @@ import aba.framework.Framework
 import aba.move.Move.{PB1, PF1}
 import aba.reasoner.{DisputeState, PotentialAssumptionMove, PotentialMove2, PotentialRuleMove}
 import aba.reasoner.argumentBased2.{ArgumentTree, DisputeStateAB2}
+import aba.reasoner.structured.HighlightedData
 import dot.ABDotConverter
 import interface.ProgramState
 
 object ABRepresentationInterface {
 
-  private def indicateOver(implicit programState: ProgramState): Option[Boolean]
-    = (programState.interactiveOver, programState.terminationCriteriaOver) match {
-      case (a@Some(_), _) => a
-      case (_, b@Some(_)) => b
-      case _ => None
-  }
+  private def indicateOver(implicit programState: ProgramState): Option[Boolean] =
+    programState.terminationCriteriaOver
+//    = (programState.interactiveOver, programState.terminationCriteriaOver) match {
+//      case _ => None
+//      case (a@Some(_), _) => a
+//      case (_, b@Some(_)) => b
+//  }
 
-  def generateABRepresentation(outputFileName: String = "temp_arg.dot", additionalInformation: String = "")(implicit programState: ProgramState): String = {
+  def generateABRepresentation(outputFileName: String = "temp_arg.dot", additionalInformation: String = "", highlightedData: Option[HighlightedData] = None, over: Option[Boolean] = None)(implicit programState: ProgramState): String = {
 
     // TODO: clean. why in two places?
     val framework = programState.framework
@@ -82,8 +84,11 @@ object ABRepresentationInterface {
       )
     )
 
-
-    ABDotConverter.exportDotRepr(propArgs2, oppArgs2, outputFileName, additionalInformation, indicateOver)(dState, framework)
+    val showOver = over match {
+      case Some(x) => Some(x)
+      case _ => indicateOver
+    }
+    ABDotConverter.exportDotRepr(propArgs2, oppArgs2, outputFileName, additionalInformation, showOver, highlightedData)(dState, framework)
   }
 
 }

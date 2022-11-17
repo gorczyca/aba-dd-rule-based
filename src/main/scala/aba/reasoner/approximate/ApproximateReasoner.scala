@@ -22,7 +22,7 @@ case class ApproximateReasoner(automaticReasoner2: MovesPreferenceBasedAutomatic
                                proponentP: Double = 1.0,
                                opponentP: Double = 1.0,
                                framework: Framework,
-                               sampleBefore: Boolean = true
+                               static: Boolean = true
                                ){
 
   private val proponentRules: Set[Rule] = getRulesSample(proponentP, framework.rules)
@@ -86,7 +86,7 @@ case class ApproximateReasoner(automaticReasoner2: MovesPreferenceBasedAutomatic
                                                     timeoutOpt: Option[Int] = None): (List[DisputeStateAuto2], List[DisputeStateAuto2], Boolean, Double) = {
 
 
-    val filteringFunction = if (sampleBefore)  approximateFiltering
+    val filteringFunction = if (static)  approximateFiltering
     else getNewFilterFunction
 
 

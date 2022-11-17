@@ -50,7 +50,7 @@ object ProgramState {
       redraw = false,
       showState = false,
       quit = false,
-      interactiveOver = None,
+      interactiveOver = None, // TODO: repair this
       terminationCriteriaOver = initialTerminationCriteriaOver,
       automaticReasoner = initialAutomaticReasoner,
       approximateReasoner = initialApproximateReasoner,

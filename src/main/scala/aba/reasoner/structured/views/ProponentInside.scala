@@ -3,11 +3,13 @@ package aba.reasoner.structured.views
 import aba.framework.Framework
 import aba.move.Move.PB1
 import aba.move.PB1Move
-import aba.reasoner.DisputeState
+import aba.reasoner.{DisputeState, PotentialMove2}
 import aba.reasoner.argumentBased2.{ArgumentTree, DisputeStateAB2}
-import aba.reasoner.structured.StructuredReasoner
+import aba.reasoner.structured.{ArgumentsToChooseFrom, StatementsToChooseFrom, StatementsWithinArgumentToChooseFrom, StructuredReasoner}
 import aba.reasoner.structured.StructuredReasoner.{digitRegex, indicesRegex, zippedToString}
 import interface.ProgramState
+import interface.dotConverters.ABRepresentationInterface.generateABRepresentation
+import interface.InputProcessorInterface.getUserInput
 
 import scala.annotation.tailrec
 import scala.util.matching.Regex
@@ -27,9 +29,12 @@ object ProponentInside extends View {
 
     val pendingGoalsSize = pendingGoals.size
 
-
     val goalsZipped = pendingGoals.toList.zipWithIndex
     val culpritCandidatesZipped = pendingCulpritCandidates.toList.zip(LazyList.from(pendingGoalsSize))
+
+    val allStatements = pendingGoals ++ pendingCulpritCandidates
+
+    generateABRepresentation(highlightedData = Some(StatementsToChooseFrom(allStatements, proponent = true)))
 
     println("Goal view:")
     println("\tGOALS:")
@@ -39,8 +44,7 @@ object ProponentInside extends View {
     println(zippedToString(culpritCandidatesZipped))
 
     // TODO: all of that should be in some interface
-    val read = Console.in.readLine
-    read match {
+    getUserInput match {
       case "b" => StructuredReasoner.run
       case "" =>
         val allStatements = pendingGoals union pendingCulpritCandidates
@@ -74,11 +78,13 @@ object ProponentInside extends View {
     val args = DisputeStateAB2.create_arguments(goals, dState.pRules)
     val argsZipped = args.toList.zipWithIndex
 
+    generateABRepresentation(highlightedData = Some(ArgumentsToChooseFrom(args, proponent = true)))
+
+
     println("Argument view:")
     println(zippedToString(argsZipped))
 
-    val read = Console.in.readLine
-    read match {
+    getUserInput match {
       case "" =>
         statementsView(args)(goals)
       case "b" => goalView
@@ -106,11 +112,12 @@ object ProponentInside extends View {
     val dState = programState.currentDState
     val statementsToFurtherExpand = (arguments.flatMap(_.endpoints.flatMap(endPoint => endPoint._2.flatMap(_.body) + endPoint._1.statement)) intersect dState.pPlayedUnexpandedStatements) diff dState.defences
 
+    generateABRepresentation(highlightedData = Some(StatementsWithinArgumentToChooseFrom(arguments, statementsToFurtherExpand, proponent = true)))
+
     val statementsZipped = statementsToFurtherExpand.toList.zipWithIndex
     println(zippedToString(statementsZipped))
 
-    val read = Console.in.readLine
-    read match {
+    getUserInput match {
       case "" =>
         moveView(statementsToFurtherExpand)(arguments, backtracking)
       case "b" => argumentView(backtracking)
@@ -134,19 +141,22 @@ object ProponentInside extends View {
 
     println("Rule/assumption view:")
 
+    //generateABRepresentation(highlightedData = Some(SelectedStatementWithinArgument(backtracking1, statements, proponent = true)))
+    generateABRepresentation(highlightedData = Some(StatementsWithinArgumentToChooseFrom(backtracking1, statements, proponent = true)))
 
     implicit val framework: Framework = programState.framework
     implicit val dState: DisputeState = programState.currentDState
 
-    val relevantMoves = programState.possibleMoves(PB1).filter {
-      case PB1Move(rule, _) => statements.contains(rule.head)
-    }
+    val relevantMoves = if (programState.possibleMoves.contains(PB1)) {
+      programState.possibleMoves(PB1).filter {
+        case PB1Move(rule, _) => statements.contains(rule.head)
+      }
+    } else Seq.empty[PotentialMove2]
 
     val relevantMovesZipped = relevantMoves.zipWithIndex
     println(zippedToString(relevantMovesZipped))
 
-    val read = Console.in.readLine
-    read match {
+    getUserInput match {
       case "" =>
         println("Choose move to perform")
         moveView(statements)(backtracking1, backtracking2)
