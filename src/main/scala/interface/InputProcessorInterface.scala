@@ -133,7 +133,7 @@ object InputProcessorInterface {
                 s"+-------------------+\n"
                 )
         println(state.automaticReasoner.toString)
-        state
+        state.copy(redraw = false)
 
         // TODO: somehow propagate this to ALL reasoners
       case "dfs 1" =>
@@ -274,7 +274,7 @@ object InputProcessorInterface {
       case "q" | "quit" =>
         state.copy(quit = true)
       case "state" =>
-        print(currentDState.toString)
+        println(currentDState.toString)
         state
       case "state 0" =>
         state.copy(showState = false)
@@ -385,14 +385,19 @@ object InputProcessorInterface {
         val (newPerformedMoves, newPerformedMovesChunks, newDState) =
           backward(state.performedMoves, state.performedMovesChunks)
 
+        println(s"Retracting the last move.")
+
+
         state.copy(
           performedMoves = newPerformedMoves,
           performedMovesChunks = newPerformedMovesChunks,
           currentDState = newDState,
+          redraw = true
           //interactiveOver = state.interactiveReasoner.checkIfOver(state.framework, newDState)
         )
       case "bb" =>
 
+        println(s"Dispute derivation reset to the initial state.")
         state.copy(
           performedMoves = Nil,
           performedMovesChunks = Nil,
@@ -402,10 +407,13 @@ object InputProcessorInterface {
       case s"b $x" if digitRegex.matches(x) =>
         val (newPerformedMoves, newPerformedMovesChunks, newDState) = backward(state.performedMoves, state.performedMovesChunks, n=x.toInt)
 
+        println(s"Retracting the last $x moves.")
+
         state.copy(
           performedMoves = newPerformedMoves,
           performedMovesChunks = newPerformedMovesChunks,
           currentDState = newDState,
+          redraw = true
           //interactiveOver = state.interactiveReasoner.checkIfOver(state.framework, newDState)
         )
 
