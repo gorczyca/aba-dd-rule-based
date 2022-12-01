@@ -2,7 +2,8 @@ package aba.framework
 
 import aba.fileParser.FileParser
 import aba.move.Move.MoveType
-import aba.reasoner.{Argument, DisputeState, LiteralArgument, PotentialMove, PotentialMove2, RuleArgument}
+import aba.reasoner.{DisputeState, PotentialMove2}
+//import aba.reasoner.{Argument, DisputeState, LiteralArgument, PotentialMove, PotentialMove2, RuleArgument}
 
 import scala.annotation.tailrec
 
@@ -19,8 +20,10 @@ case class Framework (val rules: Set[Rule],
                  val contraries: Set[Contrary],
                  var goals: Set[String], // TODO: temporary
                  var constraints: Set[String], // TODO: var temporary
-                 val alphabet: Set[String]
+                 //val alphabet: Set[String]
                 ) {
+
+  val alphabet: Set[String] = assumptions ++ contraries.flatMap(ctr => Set(ctr.contrary, ctr.assumption)) ++ goals ++ rules.flatMap(_.statements)
 
   //
   def isEvenPossible: (Option[Set[String]], Option[Set[String]]) = {

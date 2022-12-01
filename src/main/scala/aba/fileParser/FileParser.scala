@@ -7,60 +7,45 @@ import scala.collection.mutable.{Map => MutableMap}
 import aba.framework.{Contrary, Framework, Literal, Rule}
 
 // These classes are just for the purpose of parsing.
-case class PConstraint(lit: Literal)
-case class PAssumption(lit: Literal)
-case class PGoal(lit: Literal)
+case class PConstraint(lit: String)
+case class PAssumption(lit: String)
+case class PGoal(lit: String)
 
 
 
 abstract class FileParser extends RegexParsers{
 
-  val alphabet: MutableMap[String, Literal]  =  MutableMap.empty[String, Literal]
-
-  def comment: Parser[String] = """%(.*)""".r ^^ { _.toString }
   def identifier: Parser[String] = """[a-zA-Z_$][a-zA-Z_$0-9]*""".r ^^ { _.toString }
-  def fields: Parser[Set[Literal]] = (literal~",".?).* ^^ { _.map(_._1).toSet } // create a sorted set out of a set
-  def literal: Parser[Literal] = identifier ^^ { id =>
-    if (alphabet.contains(id)) alphabet(id)
-    val newLiteral = Literal(id)
-    alphabet += (id -> newLiteral)
-    newLiteral
-  }
+  def fields: Parser[Set[String]] = (identifier~",".?).* ^^ { _.map(_._1).toSet } // create a sorted set out of a set
 
   def rule: Parser[Rule]
   def contrary: Parser[Contrary]
-  def assumption: Parser[PAssumption]
-  def goal: Parser[PGoal]
-  def constraint: Parser[PConstraint]
+  def assumption: Parser[String]
+  def goal: Parser[String]
+  def constraint: Parser[String]
+
+
+  def parseLines[A](parser: Parser[A])(implicit lines: List[String]): Set[A] = {
+    lines.map(parseAll[A](parser, _)).filter {
+      case Success(_, _) => true
+      case _ => false
+    }.map(_.get).toSet
+  }
 
 
   def parseFile(fileName: String): Try[Framework] = {
     Using(Source.fromFile(fileName, enc="UTF-8")) {
       source => {
 
-        val parsedObjects = source.getLines.map(parseAll(rule | contrary | assumption | constraint | goal | comment, _) match {
-          case Success(e, _) => e
-          case _ => ()
-        }).toSet
+        implicit val sourceLines: List[String] = source.getLines.toList
 
-        val assumptions = parsedObjects.collect{ case a: PAssumption => a.lit }
-        val rules = parsedObjects.collect{ case r: Rule => r }
-        val contraries = parsedObjects.collect{ case c: Contrary => c }
-        val goals = parsedObjects.collect{ case g: PGoal => g.lit }
-        val constraints = parsedObjects.collect{ case c: PConstraint => c.lit }
-
-        // TODO: from here I started optimizing
-        val actualAssumptions = assumptions.map(_.id)
-        val actualGoals = goals.map(_.id)
-        val actualConstraints = constraints.map(_.id)
-
-        // self contradicting assumptions
-
-
-
-
-        new Framework(rules, actualAssumptions, contraries, actualGoals, actualConstraints, alphabet.keys.toSet)
-
+        new Framework(
+          rules = parseLines(rule),
+          assumptions = parseLines(assumption),
+          contraries = parseLines(contrary),
+          goals = parseLines(goal),
+          constraints = parseLines(constraint)
+        )
       }
     }
   }
