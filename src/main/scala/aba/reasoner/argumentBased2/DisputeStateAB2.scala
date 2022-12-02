@@ -1,5 +1,5 @@
 package aba.reasoner.argumentBased2
-import aba.framework.{Framework, Literal, Rule}
+import aba.framework.{Framework, Rule}
 
 import scala.annotation.tailrec
 

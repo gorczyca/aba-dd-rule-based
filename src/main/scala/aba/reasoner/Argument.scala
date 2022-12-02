@@ -1,6 +1,5 @@
 package aba.reasoner
 
-import aba.framework.{Framework, Literal, Rule}
 
 //abstract class Argument extends Product with Serializable { // To avoid mapping toSet[Argument]
 //  def parents(implicit dState: DisputeState): Set[Argument]

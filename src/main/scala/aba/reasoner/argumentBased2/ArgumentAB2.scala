@@ -1,6 +1,6 @@
 package aba.reasoner.argumentBased2
 
-import aba.framework.{Contrary, Framework, Literal, Rule}
+import aba.framework.{Contrary, Framework, Rule}
 
 import java.util.UUID
 import scala.annotation.tailrec

@@ -1,7 +1,7 @@
 package aba.move
 
 import scala.language.implicitConversions
-import aba.framework.{Contrary, Framework, Literal}
+import aba.framework.{Contrary, Framework}
 import aba.move.DisputeAdvancement.{DAB, DABF, DC, DF, DS, DisputeAdvancementType}
 import aba.reasoner.{DisputeState, PotentialMove2}
 
