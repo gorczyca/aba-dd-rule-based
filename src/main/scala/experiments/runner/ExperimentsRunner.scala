@@ -1,5 +1,6 @@
 package experiments.runner
 
+import aba.fileParser.FileParser
 import aba.framework.Framework
 import aba.move.DisputeAdvancement.{DAB, DABF}
 import aba.move.TerminationCriteria.TA
@@ -8,6 +9,7 @@ import aba.reasoner.TOREMOVEautomatic.{AutomaticReasoner, DisputeStateAuto}
 
 import java.io.PrintWriter
 import scala.io.Source
+import scala.util.{Failure, Success}
 
 object ExperimentsRunner {
 
@@ -51,19 +53,24 @@ object ExperimentsRunner {
 
   def getRuleDDOutput(automaticReasoner: AutomaticReasoner, instancePath: String, goal: String): (String, Int) = {
 
-    implicit val framework: Framework = Framework("apx", instancePath)
-    framework.goals = Set(goal)
 
-    val initialDStateAuto = DisputeStateAuto(DisputeState.initial, Set.empty, Set.empty, Nil)
-    val initialStack = List(initialDStateAuto)
+    FileParser("apx", instancePath) match {
+      case Failure(exception) => throw exception
+      case Success(fram) =>
+        implicit val framework: Framework = fram.copy(goals = Set(goal))
 
-    // TODO: automatic reasoner should have termination criteria and advancement type
 
-                                                                                                                        // TODO: changed to DABF
-    automaticReasoner.getNewIncompleteSuccessfulDSAndStackRec(initialStack, Nil)(framework, onlyOne = true, Some(TIMEOUT), TA, DABF) match {
-      case (_, _, true, duration) => ("timeout", convertDuration(duration))
-      case (_, Nil, false, duration) => ("no", convertDuration(duration))
-      case (_, _ :: _, false, duration) => ("yes", convertDuration(duration))
+        val initialDStateAuto = DisputeStateAuto(DisputeState.initial, Set.empty, Set.empty, Nil)
+        val initialStack = List(initialDStateAuto)
+
+        // TODO: automatic reasoner should have termination criteria and advancement type
+
+        // TODO: changed to DABF
+        automaticReasoner.getNewIncompleteSuccessfulDSAndStackRec(initialStack, Nil)(framework, onlyOne = true, Some(TIMEOUT), TA, DABF) match {
+          case (_, _, true, duration) => ("timeout", convertDuration(duration))
+          case (_, Nil, false, duration) => ("no", convertDuration(duration))
+          case (_, _ :: _, false, duration) => ("yes", convertDuration(duration))
+        }
     }
   }
 

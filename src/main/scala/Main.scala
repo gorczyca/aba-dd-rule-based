@@ -1,10 +1,13 @@
+import aba.fileParser.FileParser
+
 import scala.language.implicitConversions
 import aba.framework.Framework
-
 import aba.reasoner.DisputeState
 import commandLineParser.CommandLineParser
 import dot.DotConverter
 import interface.ProgramState
+
+import scala.util.{Failure, Success}
 //import pureconfig.generic.auto._
 //import pureconfig._
 // only for a test
@@ -27,29 +30,35 @@ object Main {
 
     CommandLineParser.parse(args) match {
       case Some(config) =>
-        implicit val framework: Framework = Framework(config.inputFormat, config.inputFilePath)
-        config.goal match {
-          case Some(goal) => framework.goals = Set(goal)
+        FileParser(config.inputFormat, config.inputFilePath) match {
+          case Failure(exception) =>
+            println(s"Error opening the input file.\n${exception.getMessage}")
+          case Success(fram) =>
+
+            implicit val framework: Framework = fram
+//            config.goal match {
+//              case Some(goal) => framework.goals = Set(goal)
+//              case _ =>
+//            }
+            println("\n" +
+              "+=======================+\n" +
+              "|  Derivation started.  |\n" +
+              "+=======================+\n")
+
+            framework.isEvenPossible match {
+              case (Some(contradictingGoals), _) =>
+                println(s"""Goals ${contradictingGoals.mkString(". ")} are self-contradicting.""")
+                return
+              case (_, Some(constrainedGoals)) =>
+                println(s"""Goals ${constrainedGoals.mkString(". ")} are constrained.""")
+                return
+              case _ =>
+            }
+
+            disputeDerivation(ProgramState.initial)
+
           case _ =>
         }
-        println("\n" +
-          "+=======================+\n" +
-          "|  Derivation started.  |\n" +
-          "+=======================+\n")
-
-        framework.isEvenPossible match {
-          case (Some(contradictingGoals), _) =>
-            println(s"""Goals ${contradictingGoals.mkString(". ")} are self-contradicting.""")
-            return
-          case (_, Some(constrainedGoals)) =>
-            println(s"""Goals ${constrainedGoals.mkString(". ")} are constrained.""")
-            return
-          case _ =>
-        }
-
-        disputeDerivation(ProgramState.initial)
-
-      case _ =>
     }
   }
 

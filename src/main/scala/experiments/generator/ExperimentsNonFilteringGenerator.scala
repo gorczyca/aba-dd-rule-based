@@ -1,5 +1,6 @@
 package experiments.generator
 
+import aba.fileParser.FileParser
 import aba.framework.{Framework, Rule}
 import aba.move.DisputeAdvancement.DAB
 import aba.move.PB1Move
@@ -8,7 +9,7 @@ import experiments.runner.ExperimentsRunner.{createCSVString, exportToCSV}
 
 import java.io.File
 import scala.annotation.tailrec
-import scala.util.Random
+import scala.util.{Failure, Random, Success}
 
 object ExperimentsNonFilteringGenerator {
 
@@ -27,9 +28,12 @@ object ExperimentsNonFilteringGenerator {
     val dirFiles = new File(INPUT_ABA_FRAMEWORKS).listFiles.filter(_.isFile).toList
     val allInstanceGoalPairs = dirFiles.flatMap(file => {
 
-      implicit val framework: Framework = Framework("apx", file.getAbsolutePath)
-      val statements = pickStatements(framework, STATEMENTS_COUNT)
-      statements.map(st => Seq(file.getName, st))
+      FileParser("apx", file.getAbsolutePath) match {
+        case Success(framework) =>
+          val statements = pickStatements(framework, STATEMENTS_COUNT)
+          statements.map(st => Seq(file.getName, st))
+        case Failure(exception) => throw exception
+      }
     })
 
     val csvString = createCSVString(CSV_INDEX, allInstanceGoalPairs)

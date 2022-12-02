@@ -1,10 +1,13 @@
 package experiments.runner.actualFinalExperiments
 
+import aba.fileParser.FileParser
 import aba.framework.Framework
 import aba.reasoner.DisputeState
 import aba.reasoner.automatic2.DisputeStateAuto2
 import experiments.runner.actualFinalExperiments.ExperimentsMode.{AbaStrategy, Approximation, Grounded, Normal, Preferred}
 import experiments.runner.finalExperiments.{ExperimentalParserConfig, ExperimentalRunnerParser}
+
+import scala.util.{Failure, Success}
 
 object Runner {
 
@@ -23,22 +26,30 @@ object Runner {
 
   def performExperiments(config: ExperimentalParserConfig): Unit = {
 
-    implicit val framework: Framework = Framework(config.inputFormat, config.frameworkInputPath, config.goal)
-    val initialState = DisputeState.initial(framework)
-    val (tc, ad) = config.getAutomaticReasoner.initialTCAndDA
-    val initialStateAuto = DisputeStateAuto2(initialState, Set.empty, Set.empty, Nil, tc, ad)
+    FileParser(config.inputFormat, config.frameworkInputPath) match {
+      case Failure(exception) => throw exception
+      case Success(fram) =>
+
+        implicit val framework: Framework  = config.goal match {
+          case Some(goal) => fram.copy(goals = Set(goal))
+          case _ => fram
+        }
+
+        val initialState = DisputeState.initial(framework)
+        val (tc, ad) = config.getAutomaticReasoner.initialTCAndDA
+        val initialStateAuto = DisputeStateAuto2(initialState, Set.empty, Set.empty, Nil, tc, ad)
 
 
-    val successfulDSList = config.mode match {
-      case Normal => normalDisputeDerivation(config, initialStateAuto)
-      case AbaStrategy => normalDisputeDerivation(config, initialStateAuto, abaStrategy = true)
-      case Approximation => approximateDisputeDerivation(config, initialStateAuto)
-      case Grounded => groundedDisputeDerivation(config)
-      case Preferred => preferredDisputeDerivation(config)
+        val successfulDSList = config.mode match {
+          case Normal => normalDisputeDerivation(config, initialStateAuto)
+          case AbaStrategy => normalDisputeDerivation(config, initialStateAuto, abaStrategy = true)
+          case Approximation => approximateDisputeDerivation(config, initialStateAuto)
+          case Grounded => groundedDisputeDerivation(config)
+          case Preferred => preferredDisputeDerivation(config)
+        }
+
+        outputDDInformationList(successfulDSList)
     }
-
-    outputDDInformationList(successfulDSList)
-
   }
 
   def outputDDInformation(successfulDD: DisputeStateAuto2)(implicit framework: Framework): String = {

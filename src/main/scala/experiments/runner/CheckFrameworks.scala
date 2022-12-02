@@ -1,9 +1,11 @@
 package experiments.runner
 
+import aba.fileParser.FileParser
 import aba.framework.Framework
 import experiments.runner.ComplexExperimentsRunner.recursiveListFiles
 
 import java.io.File
+import scala.util.{Failure, Success}
 
 object CheckFrameworks {
 
@@ -15,7 +17,11 @@ object CheckFrameworks {
     val files = recursiveListFiles(dirFile)
     val plFiles = files.filter(_.getName.endsWith(".pl")).toList
 
-    val frameworks = plFiles.map(f => Framework(inputFileType, f.getAbsolutePath))
+    val frameworks = plFiles.map(f =>
+      FileParser(inputFileType, f.getAbsolutePath) match {
+        case Success(fram) => fram
+        case Failure(exception) => throw exception
+      })
 
     val moreThanOneContrariesFrameworks = frameworks.filter(framework =>
       (framework.assumptions.size != framework.contraries.size) || (framework.contraries.toList.map(_.assumption).size != framework.assumptions.size)

@@ -1,5 +1,6 @@
 package experiments.generator
 
+import aba.fileParser.FileParser
 import aba.framework.{Framework, Rule}
 import aba.move.DisputeAdvancement.DABF
 import aba.move.{PB1Move, PF1Move}
@@ -8,7 +9,7 @@ import experiments.runner.ExperimentsRunner.{createCSVString, exportToCSV}
 
 import java.io.File
 import scala.annotation.tailrec
-import scala.util.Random
+import scala.util.{Failure, Random, Success}
 import scala.io.Source
 
 object ExperimentsFilter {
@@ -42,17 +43,22 @@ object ExperimentsFilter {
         println(index + 1)
         val frameworkName :: goal :: _ = line.split(",").toList
         val frameworkFullPath = s"$INPUT_ABA_FRAMEWORKS\\$frameworkName"
-        implicit val framework: Framework = Framework("apx", frameworkFullPath, Some(goal))
+
+        FileParser("apx", frameworkFullPath) match {
+          case Success(framework) =>
 
 
-        Seq(
-          frameworkName,
-          goal,
-          isGoalSelfContradicting(goal),
-          isGoalDerivable(goal, constraints = framework.assumptions),
-          isGoalDerivable(goal, constraints = Set.empty),
-          isGoalANonAttackedAssumption(goal, framework)
-        )
+            Seq(
+              frameworkName,
+              goal,
+              isGoalSelfContradicting(goal, framework),
+              isGoalDerivable(goal, constraints = framework.assumptions, framework),
+              isGoalDerivable(goal, constraints = Set.empty, framework),
+              isGoalANonAttackedAssumption(goal, framework)
+            )
+
+          case Failure(exception) => throw exception
+        }
     }
 
     val csvString = createCSVString(CSV_INDEX, data)
@@ -134,10 +140,12 @@ object ExperimentsFilter {
     }
   }
 
-  def isGoalDerivable(goal: String, constraints: Set[String])(implicit framework: Framework): Boolean = {
+  def isGoalDerivable(goal: String, constraints: Set[String], fram: Framework): Boolean = {
 
-    framework.goals = Set(goal)
-    framework.constraints = constraints
+    implicit val framework: Framework = fram.copy(
+      goals = Set(goal),
+      constraints = constraints
+    )
 
     if (constraints.contains(goal))
       return false
@@ -184,8 +192,8 @@ object ExperimentsFilter {
     checkIfDerivableRec(stack)
   }
 
-  def isGoalSelfContradicting(goal: String)(implicit framework: Framework): Boolean = {
-    framework.goals = Set(goal)
+  def isGoalSelfContradicting(goal: String, fram: Framework): Boolean = {
+    implicit val framework: Framework = fram.copy(goals = Set(goal))
 
     framework.isEvenPossible._1 match {
       case Some(_) => true

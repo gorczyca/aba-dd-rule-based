@@ -1,6 +1,9 @@
 package aba.move
 
+import aba.fileParser.FileParser
 import aba.framework.Framework
+
+import scala.util.{Failure, Success}
 
 object FrameworkMock {
 
@@ -10,5 +13,8 @@ object FrameworkMock {
 
 //  def bicycleFramework: Framework = frameworkExtractor(bicycleFrameworkPath)
 
-  def bicycleFramework: Framework = Framework.apply(bicycleFrameworkPath._1, bicycleFrameworkPath._2)
+  def bicycleFramework: Framework = FileParser(bicycleFrameworkPath._1, bicycleFrameworkPath._2) match {
+    case Success(value) => value
+    case Failure(exception) => throw exception
+  }
 }

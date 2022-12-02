@@ -1,8 +1,9 @@
 package experiments.runner.finalExperiments
 
+import aba.fileParser.FileParser
 import aba.framework.Framework
 import aba.move.DisputeAdvancement.{DAB, DisputeAdvancementType}
-import aba.move.Move.{MoveType, PF1, OB2, OF2, OB1, PB1, PB2, PF2, OF1}
+import aba.move.Move.{MoveType, OB1, OB2, OF1, OF2, PB1, PB2, PF1, PF2}
 import aba.move.TerminationCriteria.{TA, TerminationCriteriaType}
 import aba.reasoner.approximate.ApproximateReasoner
 import aba.reasoner.automatic2.complex.{GroundedReasoner, PreferredReasoner}
@@ -13,6 +14,8 @@ import aba.reasoner.automatic2.statementBased.StatementBasedAutomaticReasoner2
 import aba.reasoner.automatic2.statementBased.StatementChoice2.{Patient, StatementChoiceType2}
 import aba.reasoner.automatic2.statementBased.TurnChoice2.{Proponent, TurnChoiceType2}
 import experiments.runner.actualFinalExperiments.ExperimentsMode.{ExperimentsModeType, Grounded, Normal}
+
+import scala.util.{Failure, Success}
 
 case class ExperimentalParserConfig(
                                      frameworkInputPath: String = "",
@@ -82,9 +85,18 @@ case class ExperimentalParserConfig(
 
   def getApproximateReasoner: ApproximateReasoner = {
     val automaticReasoner = getAutomaticReasoner
-    implicit val framework: Framework = Framework(inputFormat, frameworkInputPath, goal)
 
-    ApproximateReasoner(automaticReasoner, propP, oppP, framework,  sampleBefore)
+    FileParser(inputFormat, frameworkInputPath) match {
+      case Success(value) =>
+        implicit val framework: Framework = goal match {
+          case Some(goal) => value.copy(goals = Set(goal))
+          case _ => value
+      }
+
+      ApproximateReasoner(automaticReasoner, propP, oppP, framework,  sampleBefore)
+
+      case Failure(exception) => throw exception
+    }
   }
 
 

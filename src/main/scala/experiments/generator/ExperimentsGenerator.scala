@@ -1,5 +1,6 @@
 package experiments.generator
 
+import aba.fileParser.FileParser
 import aba.framework.{Framework, Rule}
 import aba.move.DisputeAdvancement.{DAB, DABF}
 import aba.move.{PB1Move, PF1Move}
@@ -8,7 +9,7 @@ import experiments.runner.ExperimentsRunner.{createCSVString, exportToCSV}
 
 import java.io.File
 import scala.annotation.tailrec
-import scala.util.Random
+import scala.util.{Failure, Random, Success}
 
 object ExperimentsGenerator {
 
@@ -39,30 +40,33 @@ object ExperimentsGenerator {
       println(s"File ${index+1}/${filesCount}")
 
 
-      implicit val framework: Framework = Framework("apx", file.getAbsolutePath)
-      val statements = pickStatements(framework, STATEMENTS_COUNT)
 
-      val statementsSize = statements.size
 
-      //implicit val framework: Framework = Framework("apx", "C:\\Projects\\aba-experiments - Copy\\instances\\rule_dd_instances\\exp_acyclic_depvary_step5_batch_yyy04.pl")
-      //val statements = Set("z1")
+      //implicit val framework: Framework = Framework("apx", file.getAbsolutePath)
 
-      if (statements.size != STATEMENTS_COUNT) println(s"Less than ${STATEMENTS_COUNT} for ${file.getName}")
+      FileParser("apx", file.getAbsolutePath) match {
+        case Failure(exception) => throw exception
 
-      statements.toList.zipWithIndex.map { case (st, index2) => {
+        case Success(fram) =>
+          implicit val framework: Framework = fram
+          val statements = pickStatements(framework, STATEMENTS_COUNT)
+          val statementsSize = statements.size
 
-        println(s"Stmt ${index2 + 1}/${statementsSize}")
+          if (statements.size != STATEMENTS_COUNT) println(s"Less than ${STATEMENTS_COUNT} for ${file.getName}")
 
-        Seq(file.getName,
-          st,
-          isGoalSelfContradicting(st),
-          isGoalDerivable(st, constraints = framework.assumptions),
-          isGoalDerivable(st, constraints = Set.empty),
-          isGoalANonAttackedAssumption(st, framework)
-        )
-      }
-      }
-    }}
+          statements.toList.zipWithIndex.map { case (st, index2) => {
+
+            println(s"Stmt ${index2 + 1}/${statementsSize}")
+
+            Seq(file.getName,
+              st,
+              isGoalSelfContradicting(st, framework),
+              isGoalDerivable(st, constraints = framework.assumptions, framework),
+              isGoalDerivable(st, constraints = Set.empty, framework),
+              isGoalANonAttackedAssumption(st, framework)
+            )
+          }
+          }}}}
 
 
     val csvString = createCSVString(CSV_INDEX, allInstanceGoalPairs)
@@ -98,10 +102,9 @@ object ExperimentsGenerator {
     }
   }
 
-  def isGoalDerivable(goal: String, constraints: Set[String])(implicit framework: Framework): Boolean = {
+  def isGoalDerivable(goal: String, constraints: Set[String], frame: Framework): Boolean = {
 
-    framework.goals = Set(goal)
-    framework.constraints = constraints
+    implicit val framework: Framework = frame.copy(goals = Set(goal), constraints = constraints)
 
     if (constraints.contains(goal))
       return false
@@ -148,8 +151,11 @@ object ExperimentsGenerator {
     checkIfDerivableRec(stack)
   }
 
-  def isGoalSelfContradicting(goal: String)(implicit framework: Framework): Boolean = {
-    framework.goals = Set(goal)
+  def isGoalSelfContradicting(goal: String, fram: Framework): Boolean = {
+
+    implicit val framework: Framework = fram.copy(goals = Set(goal))
+
+    //framework.goals = Set(goal)
 
     framework.isEvenPossible._1 match {
       case Some(_) => true

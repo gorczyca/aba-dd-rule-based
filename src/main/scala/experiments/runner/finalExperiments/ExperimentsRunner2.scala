@@ -1,15 +1,17 @@
 package experiments.runner.finalExperiments
 
+import aba.fileParser.FileParser
 import aba.framework.Framework
 import aba.move.DisputeAdvancement.{DABF, DisputeAdvancementType}
 import aba.move.TerminationCriteria.{TA, TerminationCriteriaType}
 import aba.reasoner.DisputeState
 import aba.reasoner.automatic2.DisputeStateAuto2
 import aba.reasoner.automatic2.statementBased.StatementBasedAutomaticReasoner2
-import java.io.File
 
+import java.io.File
 import java.io.PrintWriter
 import scala.io.Source
+import scala.util.{Failure, Success}
 
 @deprecated
 object ExperimentsRunner2 {
@@ -66,11 +68,15 @@ object ExperimentsRunner2 {
         val fileName :: goal :: _ = line.split(",").toList
         val absoluteFilePath = s"${config.instancesDirectory}/$fileName"
 
-        val framework = Framework(config.inputFormat, absoluteFilePath)
-        framework.goals = Set(goal)
+        FileParser(config.inputFormat, absoluteFilePath) match {
+          case Success(value) =>
+            val framework = value.copy(goals = Set(goal))
 
-        val (verdict, duration) = getRuleDDOutput(automaticReasoner, framework, config.tCriteriaType, config.dAdvancementType, outputFilenameBase, fileName, config.timeout.toInt)
-        Seq(fileName, goal, verdict, duration)
+            val (verdict, duration) = getRuleDDOutput(automaticReasoner, framework, config.tCriteriaType, config.dAdvancementType, outputFilenameBase, fileName, config.timeout.toInt)
+            Seq(fileName, goal, verdict, duration)
+
+          case Failure(exception) => throw exception
+        }
     }
 
 

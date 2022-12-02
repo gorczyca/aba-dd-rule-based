@@ -8,21 +8,21 @@ import aba.reasoner.{DisputeState, PotentialMove2}
 import scala.annotation.tailrec
 
 // companion object
-object Framework {
-  def apply(inputType: String, filePath: String, goal: Option[String] = None): Framework = FileParser(inputType, filePath, goal)
-}
+//object Framework {
+//  def apply(inputType: String, filePath: String, goal: Option[String] = None): Framework = FileParser(inputType, filePath, goal)
+//}
 
 
 // TODO: keep here the file path
 
-case class Framework (val rules: Set[Rule],
-                 val assumptions: Set[String],
-                 val contraries: Set[Contrary],
-                 var goals: Set[String], // TODO: temporary
+case class Framework (rules: Set[Rule],
+                 assumptions: Set[String],
+                 contraries: Set[Contrary],
+                 goals: Set[String],
                  var constraints: Set[String], // TODO: var temporary
-                 //val alphabet: Set[String]
                 ) {
 
+  // TODO: calculate this once when creating
   val alphabet: Set[String] = assumptions ++ contraries.flatMap(ctr => Set(ctr.contrary, ctr.assumption)) ++ goals ++ rules.flatMap(_.statements)
 
   //

@@ -1,5 +1,6 @@
 package experiments.runner
 
+import aba.fileParser.FileParser
 import aba.framework.Framework
 
 import java.io.{File, FileWriter}
@@ -14,6 +15,8 @@ import experiments.runner.finalExperiments.ExperimentsRunner2.{OUTPUT_DIR, conve
 import experiments.runner.finalExperiments.{ExperimentalParserConfig, ExperimentalRunnerParser}
 import interface.{ABDotConfig, ProgramState}
 import interface.dotConverters.ABRepresentationInterface.generateABRepresentation
+
+import scala.util.{Failure, Success}
 
 
 @deprecated
@@ -81,9 +84,12 @@ object ComplexExperimentsRunner {
 
         println(s"${index+1}/$totalSize")
 
-        val framework = Framework.apply(config.inputFormat, file.getAbsolutePath)
-        val (verdict, duration) = getRuleDDOutput(automaticReasoner, framework, config.tCriteriaType, config.dAdvancementType, outputFilenameBase, file.getName, config.timeout.toInt)
-        Seq(file.getName, framework.goals.mkString(";"), verdict, duration)
+        FileParser(config.inputFormat, file.getAbsolutePath) match {
+          case Failure(exception) => throw exception
+          case Success(framework) =>
+            val (verdict, duration) = getRuleDDOutput(automaticReasoner, framework, config.tCriteriaType, config.dAdvancementType, outputFilenameBase, file.getName, config.timeout.toInt)
+            Seq(file.getName, framework.goals.mkString(";"), verdict, duration)
+        }
     }
 
     val csvString = createCSVString(CSV_INDEX, experimentOutput)

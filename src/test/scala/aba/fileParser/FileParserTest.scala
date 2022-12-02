@@ -2,6 +2,8 @@ package aba.fileParser
 
 import org.scalatest.FunSuite
 
+import scala.util.{Failure, Success}
+
 class FileParserTest extends FunSuite {
 
   val frameworkPathAba = "examples/unit_test_example.aba"
@@ -15,52 +17,62 @@ class FileParserTest extends FunSuite {
   }
 
   def testAbaParser(): Unit = {
-    val framework = FileParser("aba", frameworkPathAba)
+    FileParser("aba", frameworkPathAba) match {
+      case Success(framework) =>
 
-    test("FileParser.Aba - assumptions") {
-      assert(framework.assumptions == TestFrameworkMock.frameworkMock.assumptions)
-    }
+        test("FileParser.Aba - assumptions") {
+          assert(framework.assumptions == TestFrameworkMock.frameworkMock.assumptions)
+        }
 
-    test("FileParser.Aba - rules") {
-      assert(framework.rules == TestFrameworkMock.frameworkMock.rules)
-    }
+        test("FileParser.Aba - rules") {
+          assert(framework.rules == TestFrameworkMock.frameworkMock.rules)
+        }
 
-    test("FileParser.Aba - contraries") {
-      assert(framework.contraries == TestFrameworkMock.frameworkMock.contraries)
-    }
+        test("FileParser.Aba - contraries") {
+          assert(framework.contraries == TestFrameworkMock.frameworkMock.contraries)
+        }
 
-    test("FileParser.Aba - goals") {
-      assert(framework.goals == TestFrameworkMock.frameworkMock.goals)
-    }
+        test("FileParser.Aba - goals") {
+          assert(framework.goals == TestFrameworkMock.frameworkMock.goals)
+        }
 
-    test("FileParser.Aba - alphabet") {
-      assert(framework.alphabet == TestFrameworkMock.frameworkMock.alphabet)
+        test("FileParser.Aba - alphabet") {
+          assert(framework.alphabet == TestFrameworkMock.frameworkMock.alphabet)
+        }
+      case Failure(exception) => throw exception
     }
 
   }
   def testApxParser(): Unit = {
 
-    val framework = FileParser("apx", frameworkPathApx)
+    FileParser("apx", frameworkPathApx) match {
+      case Success(framework) =>
 
-    test("FileParser.Apx - assumptions") {
-      assert(framework.assumptions == TestFrameworkMock.frameworkMock.assumptions)
-    }
+        test("FileParser.Apx - assumptions") {
+          assert(framework.assumptions == TestFrameworkMock.frameworkMock.assumptions)
+        }
 
-    test("FileParser.Apx - rules") {
-      assert(framework.rules == TestFrameworkMock.frameworkMock.rules)
-    }
+        test("FileParser.Apx - rules") {
+          assert(framework.rules == TestFrameworkMock.frameworkMock.rules)
+        }
 
-    test("FileParser.Apx - contraries") {
-      assert(framework.contraries == TestFrameworkMock.frameworkMock.contraries)
-    }
+        test("FileParser.Apx - contraries") {
+          assert(framework.contraries == TestFrameworkMock.frameworkMock.contraries)
+        }
 
-    test("FileParser.Apx - goals") {
-      assert(framework.goals == TestFrameworkMock.frameworkMock.goals)
-    }
+        test("FileParser.Apx - goals") {
+          assert(framework.goals == TestFrameworkMock.frameworkMock.goals)
+        }
 
-    test("FileParser.Apx - alphabet") {
-      assert(framework.alphabet == TestFrameworkMock.frameworkMock.alphabet)
+        test("FileParser.Apx - alphabet") {
+          assert(framework.alphabet == TestFrameworkMock.frameworkMock.alphabet)
+        }
+
+      case Failure(exception) => throw exception
     }
+  }
+
+  def testMissingFile(): Unit = {
 
   }
 }

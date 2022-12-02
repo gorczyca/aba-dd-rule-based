@@ -1,31 +1,63 @@
 package aba.fileParser
 
-import scala.util.{Success, Failure, Try, Using}
+import scala.util.{Try, Using}
 import scala.io.Source
 import scala.util.parsing.combinator.RegexParsers
-import scala.collection.mutable.{Map => MutableMap}
-import aba.framework.{Contrary, Framework, Literal, Rule}
+import aba.framework.{Contrary, Framework, Rule}
 
-// These classes are just for the purpose of parsing.
-case class PConstraint(lit: String)
-case class PAssumption(lit: String)
-case class PGoal(lit: String)
+/** Base parser class. */
+abstract class FileParser extends RegexParsers {
 
-
-
-abstract class FileParser extends RegexParsers{
-
+  /** Returns string parser of an identifier: a letter (or an _ or $) followed by
+   *
+   * @return String parser of an identifier.
+   */
   def identifier: Parser[String] = """[a-zA-Z_$][a-zA-Z_$0-9]*""".r ^^ { _.toString }
+
+  /** Returns a parser of a set of identifiers.
+   *
+   * @return Parser of a set of identifiers.
+   */
   def fields: Parser[Set[String]] = (identifier~",".?).* ^^ { _.map(_._1).toSet } // create a sorted set out of a set
 
+  /** Returns a parser of a rule.
+   *
+   * @return Rule parser.
+   */
   def rule: Parser[Rule]
+
+  /** Returns a parser of a contrary.
+   *
+   * @return Contrary parser.
+   */
   def contrary: Parser[Contrary]
+
+  /** Returns a string parser of an assumption.
+   *
+   * @return Assumption string parser.
+   */
   def assumption: Parser[String]
+
+  /** Returns a string parser of a goal.
+   *
+   * @return Goal string parser.
+   */
   def goal: Parser[String]
+
+  /** Returns a string parser of a constraint.
+   *
+   * @return Constraint string parser.
+   */
   def constraint: Parser[String]
 
-
-  def parseLines[A](parser: Parser[A])(implicit lines: List[String]): Set[A] = {
+  /** Parses lines of the input file and returns a set of framework elements of type A.
+   *
+   * @param parser A [[Parser]]
+   * @param lines Lines of the input file.
+   * @tparam A Returned type of elements of the set. Can be a string (if parsing goals or assumptions), [[Rule]] or a [[Contrary]].
+   * @return
+   */
+  private def parseLines[A](parser: Parser[A])(implicit lines: List[String]): Set[A] = {
     lines.map(parseAll[A](parser, _)).filter {
       case Success(_, _) => true
       case _ => false
@@ -33,37 +65,43 @@ abstract class FileParser extends RegexParsers{
   }
 
 
-  def parseFile(fileName: String): Try[Framework] = {
-    Using(Source.fromFile(fileName, enc="UTF-8")) {
-      source => {
-
-        implicit val sourceLines: List[String] = source.getLines.toList
-
-        new Framework(
-          rules = parseLines(rule),
-          assumptions = parseLines(assumption),
-          contraries = parseLines(contrary),
-          goals = parseLines(goal),
-          constraints = parseLines(constraint)
-        )
-      }
-    }
+  /** Parses the input file and returns the new framework.
+   *
+   * @param fileLines lines of the input file.
+   * @return A resulting [[Framework]]
+   */
+  private def parseFileLines(implicit fileLines: List[String]): Framework = {
+    new Framework(
+      rules = parseLines(rule),
+      assumptions = parseLines(assumption),
+      contraries = parseLines(contrary),
+      goals = parseLines(goal),
+      constraints = parseLines(constraint)
+    )
   }
 }
 
+/** FileParser companion object. */
 object FileParser {
-  def apply(parserType: String, filePath: String, goalOpt: Option[String] = None): Framework = {
+  /**
+   *
+   * @param parserType Parser type, currently "apx" or "aba".
+   * @param filePath Path to the input file.
+   * @return New framework if no errors occurred while reading the file.
+   */
+  def apply(parserType: String, filePath: String): Try[Framework] = {
     val parser: FileParser = parserType match {
       case "apx" => ApxParser
       case "aba" => AbaParser
     }
 
-    parser.parseFile(filePath) match {
-      case Success(fram) => goalOpt match {
-        case Some(goal) => fram.copy(goals = Set(goal))
-        case _ => fram
+    Using(Source.fromFile(filePath, enc = "UTF-8")) {
+      source => {
+
+        val sourceLines = source.getLines.toList
+        parser.parseFileLines(sourceLines)
+
       }
-      case Failure(exception) => throw exception
     }
   }
 }

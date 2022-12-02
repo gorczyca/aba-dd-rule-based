@@ -123,10 +123,10 @@ object InputProcessorInterface {
         // TODO: return the state, allow to find one only or more
         findSuccessfulDerivationsGrounded()
         state
-      case s"g $goal" =>  // TODO: temporary
-        framework.goals = Set(goal)
-        state
-
+      case s"g $goal" =>
+        state.copy(
+          framework = framework.copy(goals = Set(goal))
+        )
       case "strat" =>
        println( s"+-------------------+\n" +
                 s"|  Chosen strategy: |\n" +
