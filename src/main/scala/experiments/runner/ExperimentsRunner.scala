@@ -31,7 +31,7 @@ object ExperimentsRunner {
   def main(args: Array[String]): Unit = {
 
     val source = Source.fromFile(NON_TRIVIAL_CSV_GOALS_FILE)
-    val lines = source.getLines.toList.drop(1)
+    val lines = source.getLines().toList.drop(1)
     source.close()
 
     val totalInstancesCount = lines.size

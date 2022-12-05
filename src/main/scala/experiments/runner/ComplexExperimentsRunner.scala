@@ -145,11 +145,6 @@ object ComplexExperimentsRunner {
         print("Error!")
         (s"exception;${e.getMessage}", 0)
       }
-      case _ => {
-        print("SomethingElse!")
-        print("something else caught")
-        ("error", 0)
-      }
     }
   }
 

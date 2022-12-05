@@ -136,7 +136,7 @@ class AutoPreferenceReasoner(dfs: Boolean) {
             //println(0 + ": " + headDS.dState.p.mkString("; "))
           } else {
             val allPerformedMovesCount = headDS.performedMoves.size
-            println(allPerformedMovesCount +":" + "\t" * propPerformedMovesCount + headDS.performedMoves.last.toString +  "\t" + s""" icc: { ${headDS.ignoredCulpritCandidates.mkString(";")} } ia: { ${headDS.ignoredProponentAssumptions.mkString(";")} }""")
+            println(s"$allPerformedMovesCount:" + "\t" * propPerformedMovesCount + headDS.performedMoves.last.toString +  "\t" + s""" icc: { ${headDS.ignoredCulpritCandidates.mkString(";")} } ia: { ${headDS.ignoredProponentAssumptions.mkString(";")} }""")
           }
 
 

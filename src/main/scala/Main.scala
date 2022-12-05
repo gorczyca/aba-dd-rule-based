@@ -36,10 +36,6 @@ object Main {
           case Success(fram) =>
 
             implicit val framework: Framework = fram
-//            config.goal match {
-//              case Some(goal) => framework.goals = Set(goal)
-//              case _ =>
-//            }
             println("\n" +
               "+=======================+\n" +
               "|  Derivation started.  |\n" +
@@ -59,6 +55,7 @@ object Main {
 
           case _ =>
         }
+      case _ =>
     }
   }
 

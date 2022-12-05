@@ -36,7 +36,7 @@ object ExperimentsRunner2 {
     createDirIfNotExists(OUTPUT_DIR)
 
     val source = Source.fromFile(config.csvInputPath)
-    val lines = source.getLines.toList.drop(1) // drop csv header
+    val lines = source.getLines().toList.drop(1) // drop csv header
     source.close()
 
     val automaticReasoner = StatementBasedAutomaticReasoner2(
@@ -128,11 +128,6 @@ object ExperimentsRunner2 {
       case e: Throwable => {
         print("Error!")
         (s"exception;${e.getMessage}", 0)
-      }
-      case _ => {
-        print("SomethingElse!")
-        print("something else caught")
-        ("error", 0)
       }
     }
   }

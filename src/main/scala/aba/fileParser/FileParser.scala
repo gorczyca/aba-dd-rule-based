@@ -98,7 +98,7 @@ object FileParser {
     Using(Source.fromFile(filePath, enc = "UTF-8")) {
       source => {
 
-        val sourceLines = source.getLines.toList
+        val sourceLines = source.getLines().toList
         parser.parseFileLines(sourceLines)
 
       }

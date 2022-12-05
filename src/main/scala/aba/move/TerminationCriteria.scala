@@ -1,10 +1,11 @@
 package aba.move
 
+import scala.language.implicitConversions
+
 import aba.framework.Framework
 import aba.reasoner.{DisputeState, PotentialMove2}
 import aba.move.DisputeAdvancement.{DAB, DC, DF, DS, DABF, DisputeAdvancementType}
 import aba.move.Move.{MoveType, OB1, OB2, OF1, OF2, PB1, PB2, PF1, PF2}
-import aba.move.TerminationCriteria.{TC, TS}
 
 object TerminationCriteria extends Enumeration {
   type TerminationCriteriaType = Value

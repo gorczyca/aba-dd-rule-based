@@ -1,5 +1,7 @@
 package aba.move
 
+import scala.language.implicitConversions // needed for the fromString method
+
 import aba.framework.Framework
 import aba.move.DisputeAdvancement.DisputeAdvancementType
 import aba.move.Move.{MoveType, OB1, OB2, OF1, OF2, PB1, PB2, PF1, PF2}

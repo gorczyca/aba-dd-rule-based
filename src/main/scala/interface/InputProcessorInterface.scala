@@ -330,9 +330,9 @@ object InputProcessorInterface {
         // TODO
         //println(s"Moves sequence:\n\t${derivation.map(_.sequenceElement).mkString("; ")}\n")
         state
-      //case "m" | "more" =>
+      case "m" | "more" =>
         //???
-        //printAdditionalInformation
+        printAdditionalInformation
         state
       case s"dotp 1" =>
         println(s"Continuous rule based representation generation switched ON.")

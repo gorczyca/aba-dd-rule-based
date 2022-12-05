@@ -6,9 +6,9 @@ object CustomImplicits {
   implicit class mapWrapper[K, V](map: Map[K, Seq[V]]) {
     def randomElement: V = {
       val n = util.Random.nextInt(map.size)
-      val seq = map.iterator.drop(n).next._2 // entry [MoveType, Seq[PotentialMoves]] -> now take random PotentialMove
+      val seq = map.iterator.drop(n).next()._2 // entry [MoveType, Seq[PotentialMoves]] -> now take random PotentialMove
       val m = util.Random.nextInt(seq.size)
-      seq.iterator.drop(m).next
+      seq.iterator.drop(m).next()
     }
   }
 
@@ -20,7 +20,7 @@ object CustomImplicits {
   implicit class seqWrapper[T](seq: Seq[T]) {
     def random: T = {
       val n = util.Random.nextInt(seq.size)
-      seq.iterator.drop(n).next
+      seq.iterator.drop(n).next()
     }
   }
 }

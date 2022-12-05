@@ -38,7 +38,7 @@ object ExperimentsFilter {
 
     val bufferedSource = Source.fromFile(FRAMEWORK_GOAL_CSV_FILE)
     //val test = bufferedSource.getLines.drop(1).zipWithIndex.toList
-    val data = bufferedSource.getLines.drop(1).zipWithIndex.toList.map {
+    val data = bufferedSource.getLines().drop(1).zipWithIndex.toList.map {
       case (line, index) =>
         println(index + 1)
         val frameworkName :: goal :: _ = line.split(",").toList
