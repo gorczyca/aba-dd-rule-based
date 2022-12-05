@@ -1,25 +1,14 @@
 package aba.framework
 
-import aba.fileParser.FileParser
 import aba.move.Move.MoveType
 import aba.reasoner.{DisputeState, PotentialMove2}
-//import aba.reasoner.{Argument, DisputeState, LiteralArgument, PotentialMove, PotentialMove2, RuleArgument}
 
-import scala.annotation.tailrec
-
-// companion object
-//object Framework {
-//  def apply(inputType: String, filePath: String, goal: Option[String] = None): Framework = FileParser(inputType, filePath, goal)
-//}
-
-
-// TODO: keep here the file path
 
 case class Framework (rules: Set[Rule],
                  assumptions: Set[String],
                  contraries: Set[Contrary],
                  goals: Set[String],
-                 var constraints: Set[String], // TODO: var temporary
+                 constraints: Set[String],
                 ) {
 
   // TODO: calculate this once when creating
