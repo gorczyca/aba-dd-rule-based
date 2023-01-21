@@ -35,7 +35,11 @@ object Main {
             println(s"Error opening the input file.\n${exception.getMessage}")
           case Success(fram) =>
 
-            implicit val framework: Framework = fram
+            implicit val framework: Framework = config.goal match {
+              case Some(g) => fram.copy(goals = Set(g))
+              case _ => fram
+            }
+
             println("\n" +
               "+=======================+\n" +
               "|  Derivation started.  |\n" +
@@ -51,7 +55,14 @@ object Main {
               case _ =>
             }
 
-            disputeDerivation(ProgramState.initial)
+            // TODO: take into account the config!!! in the constructor
+            val initialState = ProgramState.initial
+
+
+            disputeDerivation(initialState
+              .copy(tCriteria = config.tCriteriaType,
+                dAdvancement = config.dAdvancementType,
+                automaticReasoner = initialState.automaticReasoner.copy(tCriteriaType = config.tCriteriaType, dAdvancementType = config.dAdvancementType)))
 
           case _ =>
         }
