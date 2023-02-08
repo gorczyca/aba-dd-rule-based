@@ -2,15 +2,15 @@
     "version": "1.4.0",
     "project": {
         "name": "aba-dd-rule-based-build-build",
-        "directory": "/home/piotr/Dresden/flexABle/aba-dd-rule-based/project/project",
-        "workspaceDir": "/home/piotr/Dresden/flexABle/aba-dd-rule-based/project/project",
+        "directory": "/home/piotr/Dresden/flexable-copy/aba-dd-rule-based/project/project",
+        "workspaceDir": "/home/piotr/Dresden/flexable-copy/aba-dd-rule-based/project/project",
         "sources": [
-            "/home/piotr/Dresden/flexABle/aba-dd-rule-based/project/project/src/main/scala",
-            "/home/piotr/Dresden/flexABle/aba-dd-rule-based/project/project/src/main/scala-2.12",
-            "/home/piotr/Dresden/flexABle/aba-dd-rule-based/project/project/src/main/scala-2",
-            "/home/piotr/Dresden/flexABle/aba-dd-rule-based/project/project/src/main/java",
-            "/home/piotr/Dresden/flexABle/aba-dd-rule-based/project/project/src/main/scala-sbt-1.0",
-            "/home/piotr/Dresden/flexABle/aba-dd-rule-based/project/project/target/scala-2.12/sbt-1.0/src_managed/main"
+            "/home/piotr/Dresden/flexable-copy/aba-dd-rule-based/project/project/src/main/scala",
+            "/home/piotr/Dresden/flexable-copy/aba-dd-rule-based/project/project/src/main/scala-2.12",
+            "/home/piotr/Dresden/flexable-copy/aba-dd-rule-based/project/project/src/main/scala-2",
+            "/home/piotr/Dresden/flexable-copy/aba-dd-rule-based/project/project/src/main/java",
+            "/home/piotr/Dresden/flexable-copy/aba-dd-rule-based/project/project/src/main/scala-sbt-1.0",
+            "/home/piotr/Dresden/flexable-copy/aba-dd-rule-based/project/project/target/scala-2.12/sbt-1.0/src_managed/main"
         ],
         "dependencies": [
             
@@ -106,11 +106,11 @@
             "/home/piotr/.cache/coursier/v1/https/repo1.maven.org/maven2/com/squareup/okio/okio/1.17.2/okio-1.17.2.jar",
             "/home/piotr/.cache/coursier/v1/https/repo1.maven.org/maven2/com/typesafe/config/1.3.3/config-1.3.3.jar"
         ],
-        "out": "/home/piotr/Dresden/flexABle/aba-dd-rule-based/project/project/.bloop/aba-dd-rule-based-build-build",
-        "classesDir": "/home/piotr/Dresden/flexABle/aba-dd-rule-based/project/project/.bloop/aba-dd-rule-based-build-build/scala-2.12/sbt-1.0/classes",
+        "out": "/home/piotr/Dresden/flexable-copy/aba-dd-rule-based/project/project/.bloop/aba-dd-rule-based-build-build",
+        "classesDir": "/home/piotr/Dresden/flexable-copy/aba-dd-rule-based/project/project/.bloop/aba-dd-rule-based-build-build/scala-2.12/sbt-1.0/classes",
         "resources": [
-            "/home/piotr/Dresden/flexABle/aba-dd-rule-based/project/project/src/main/resources",
-            "/home/piotr/Dresden/flexABle/aba-dd-rule-based/project/project/target/scala-2.12/sbt-1.0/resource_managed/main"
+            "/home/piotr/Dresden/flexable-copy/aba-dd-rule-based/project/project/src/main/resources",
+            "/home/piotr/Dresden/flexable-copy/aba-dd-rule-based/project/project/target/scala-2.12/sbt-1.0/resource_managed/main"
         ],
         "scala": {
             "organization": "org.scala-lang",
@@ -120,12 +120,10 @@
                 "-deprecation"
             ],
             "jars": [
-                "/home/piotr/.sbt/boot/scala-2.12.12/lib/scala-library.jar",
-                "/home/piotr/.sbt/boot/scala-2.12.12/lib/scala-reflect.jar",
-                "/home/piotr/.sbt/boot/scala-2.12.12/lib/jline.jar",
                 "/home/piotr/.sbt/boot/scala-2.12.12/lib/scala-compiler.jar",
-                "/home/piotr/.sbt/boot/scala-2.12.12/lib/jansi.jar",
-                "/home/piotr/.sbt/boot/scala-2.12.12/lib/scala-xml_2.12.jar"
+                "/home/piotr/.sbt/boot/scala-2.12.12/lib/scala-xml_2.12-1.0.6.jar",
+                "/home/piotr/.sbt/boot/scala-2.12.12/lib/scala-reflect.jar",
+                "/home/piotr/.sbt/boot/scala-2.12.12/lib/scala-library.jar"
             ],
             "setup": {
                 "order": "mixed",
@@ -194,9 +192,9 @@
         "platform": {
             "name": "jvm",
             "config": {
-                "home": "/usr/lib/jvm/java-11-openjdk-amd64",
+                "home": "/home/piotr/.cache/coursier/arc/https/github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u292-b10/OpenJDK8U-jdk_x64_linux_hotspot_8u292b10.tar.gz/jdk8u292-b10/jre",
                 "options": [
-                    "-Duser.dir=/home/piotr/Dresden/flexABle/aba-dd-rule-based/project/project"
+                    "-Duser.dir=/home/piotr/Dresden/flexable-copy/aba-dd-rule-based/project/project"
                 ]
             },
             "mainClass": [

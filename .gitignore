@@ -5,3 +5,4 @@ target/
 /.scannerwork/
 /flexable
 testResources/aspforaba_defences_adm.csv
+project/.bloop/
