@@ -2,6 +2,7 @@
 ![CI](https://github.com/gorczyca/aba-dd-rule-based/actions/workflows/scala.yml/badge.svg)
 ___
 
+
 ## Running (download jar from the "Releases" section, then):
 
 ```
