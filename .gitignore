@@ -3,3 +3,5 @@
 project/target
 target/
 /.scannerwork/
+/flexable
+testResources/aspforaba_defences_adm.csv
