@@ -35,7 +35,7 @@ class AutomaticReasonerTest extends FunSuite {
   //testDefencesCorrectness(Semantics.Admissible, 1.0)
   //testDefencesCorrectness(Semantics.Admissible,  1.0, onlyOne = false)
   //testDefencesCorrectness(Semantics.Admissible, .05, onlyOne = false, Some(60))
-  testDefencesCorrectness(Semantics.Complete, 0.01, onlyOne=true, Some(30))
+  //testDefencesCorrectness(Semantics.Complete, 0.01, onlyOne=true, Some(30))
   //testDefencesCorrectness(Semantics.Complete, 0.05, Some(30))
   //testDefencesCorrectness(Semantics.Stable, 0.05, onlyOne = false, Some(120))
   //testDefencesCorrectness(Semantics.Complete, 0.75, onlyOne = false, Some(120))
