@@ -53,6 +53,17 @@ object DisputeAdvancement extends Enumeration {
         OB2,
         OF2,
       )
+// TODO: when allowing for OF1 moves, and disallowing PF1
+//      case DABF => Seq(
+//        PB1,
+//        PB2,
+//        //PF1,
+//        PF2,
+//        OF1,
+//        OB1,
+//        OB2,
+//        OF2,
+//      )
       case DC => Seq(
         PB1,
         PB2,
