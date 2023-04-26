@@ -21,21 +21,21 @@ object MovesPreferenceBasedAutomaticReasoner2 {
       dfs = true, // dfs
       tCriteriaType =  terminationCriteriaType,
       dAdvancementType = disputeAdvancementType,
-//      startWithAdmissible = true,
-      startWithAdmissible = false,
+      startWithAdmissible = true,
+//      startWithAdmissible = false,
 //      preferenceOrdering = Seq(PF1, PF2, OF1, PB2, OB2, OF2, OB1, PB1),
-//      preferenceOrdering = Seq(PF1, PB2, PF2, PB1, OB2, OF2, OB1), // s1
-      preferenceOrdering = Seq(PF1, OB2, OF2, OB1, PB1, PB2, PF2, OF1), // s2
+      preferenceOrdering = Seq(PF1, PB2, PF2, PB1, OB2, OF2, OB1), // s1
+//      preferenceOrdering = Seq(PF1, OB2, OF2, OB1, PB1, PB2, PF2, OF1), // s2
 
 //      preferenceOrdering = Seq(OB2, OF2, OB1, PB1, PB2, PF2, OF1, PF1),
-      pRuleHeadChoice = RuleHeadChoice.MostRules,
-//      pRuleHeadChoice = RuleHeadChoice.LeastRules,
-      oRuleHeadChoice = RuleHeadChoice.MostRules,
+//      pRuleHeadChoice = RuleHeadChoice.MostRules,
+      pRuleHeadChoice = RuleHeadChoice.LeastRules,
 //      oRuleHeadChoice = RuleHeadChoice.MostRules,
-      pRuleChoice = RuleChoice2.BodyMax,
-//      pRuleChoice = RuleChoice2.NewlyIntroducedStatementsMin,
-      oRuleChoice = RuleChoice2.BodyMax
-//      oRuleChoice = RuleChoice2.NewlyIntroducedStatementsMin
+      oRuleHeadChoice = RuleHeadChoice.LeastRules,
+//      pRuleChoice = RuleChoice2.BodyMax,
+      pRuleChoice = RuleChoice2.NewlyIntroducedStatementsMin,
+//      oRuleChoice = RuleChoice2.BodyMax
+      oRuleChoice = RuleChoice2.NewlyIntroducedStatementsMin
     )
   }
 }
