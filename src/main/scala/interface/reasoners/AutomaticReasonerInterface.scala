@@ -11,14 +11,14 @@ import scala.annotation.tailrec
 
 object AutomaticReasonerInterface {
 
-  def findSuccessfulDerivations2(onlyOne: Boolean, performNMoves: Option[Int] = None, generateABRep: Boolean = false, findAndReturn: Boolean = false)(implicit programState: ProgramState): ProgramState = {
+  def findSuccessfulDerivations2(onlyOne: Boolean, performNMoves: Option[Int] = None, generateABRep: Boolean = false, findAndReturn: Boolean = false, quiet: Boolean = false)(implicit programState: ProgramState): ProgramState = {
 
     // TODO: clean
     val framework = programState.framework
     val currentState = programState.currentDState
 
-    performNMoves match {
-      case None => println("Finding a successful derivation. This can take a moment...")
+    (performNMoves, quiet) match {
+      case (None, false) => println("Finding a successful derivation. This can take a moment...")
       case _ =>
     }
 
@@ -33,24 +33,31 @@ object AutomaticReasonerInterface {
       programState.automaticReasoner.getNewIncompleteSuccessfulDSAndStackRec(stack, Nil, None, (isIgnored, _) => (x: PotentialMove2) => !isIgnored(x), performNMoves)(framework, onlyOne = onlyOne, None) match {
         // TODO: remove the three last
         case (_,  list@_::_, true, duration) =>
+          // case: timeout reached
+
+          // TODO: do i need that?
           println("Timeout reached")
-          println(s"(After) $duration")
-          println(s" Found: ${list.size}")
-          val defences = list.map(_.dState.defences).toSet
-          println(s" Distinct defences: ${defences.size}")
-          println(defences.toList.sortBy(_.size).map(group => s"""[ ${group.mkString(",")} ]""").mkString("\n"))
+//          println(s"(After) $duration")
+//          println(s" Found: ${list.size}")
+//          val defences = list.map(_.dState.defences).toSet
+//          println(s" Distinct defences: ${defences.size}")
+//          println(defences.toList.sortBy(_.size).map(group => s"""[ ${group.mkString(",")} ]""").mkString("\n"))
           (Nil, currentState)
 
         case (Nil, Nil, _, _) =>
-          println("No successful derivations found")
+          // case: unsatisfiable
+          if (quiet) println("NO") else println("No successful derivations found")
           (Nil, currentState)
 
         case (Nil, list@successfulHead::_, _, duration) =>
-          println(s"Finished in $duration")
+          if (quiet) println("YES")
+          else {
+            println(s"Finished in $duration")
+            println(successfulHead.performedMovesToString(programState.performedMoves.size).mkString("\n"))
+          }
 
           //programState.performedMoves.size
 
-          println(successfulHead.performedMovesToString(programState.performedMoves.size).mkString("\n"))
           // TODO: uncomment that
           //println(s" All successful found: ${list.size}")
           //val defences = list.map(_.dState.defences).toSet
@@ -59,12 +66,13 @@ object AutomaticReasonerInterface {
           (successfulHead.performedMoves, successfulHead.dState)
 
         case (restDS, successfulHead :: _, _, duration) =>
-          println(s"Finished in $duration")
-          // TODO: this is the culprit - this should be only explicitly called for
-          if (generateABRep) {
-            generateABRepresentation(over = Some(true))(programState.copy(currentDState = successfulHead.dState))
+          if (quiet) println("YES")
+          else {
+            println(s"Finished in $duration")
+            println(successfulHead.performedMovesToString().mkString("\n"))
           }
-          println(successfulHead.performedMovesToString().mkString("\n"))
+          // TODO: this is the culprit - this should be only explicitly called for
+          if (generateABRep) generateABRepresentation(over = Some(true))(programState.copy(currentDState = successfulHead.dState))
           if (!findAndReturn) {
             println("Press ENTER to finish, ; to find another one")
             getUserInput match {

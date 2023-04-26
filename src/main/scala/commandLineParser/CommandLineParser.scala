@@ -40,6 +40,8 @@ object CommandLineParser {
       // automatic reasoner options
       opt[Unit]('s', "solve")
         .action((_, c) => c.copy(solve = true)),
+      opt[Unit]('q', "quiet")
+        .action((_, c) => c.copy(quiet = true)),
       opt[String]("tc")
         .action((x, c) => {
           val tCriteria = x.toLowerCase match {

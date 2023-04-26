@@ -57,7 +57,7 @@ object Main {
 
             // if SOLVE mode simply try to solve and return
             if (config.solve) {
-              findSuccessfulDerivations2(onlyOne = true, findAndReturn = true)(initialState)
+              findSuccessfulDerivations2(onlyOne = true, findAndReturn = true, quiet = config.quiet)(initialState)
               return
             }
 

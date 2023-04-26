@@ -13,7 +13,8 @@ case class ParserConfig(
                          inputFormat: String = "aba",
                          goal: Option[String] = None,
 
-                         solve: Boolean = false, // if true will solve automatically and print the result (YES / NO)
+                         solve: Boolean = false, // if true will solve automatically and print the result
+                         quiet: Boolean = false, // if true will only print YES / NO
                          // default automatic reasoner options options
                          dfs: Boolean = true,
                          tCriteriaType: TerminationCriteriaType = TA,
