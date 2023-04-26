@@ -1,10 +1,10 @@
 package aba.fileParser
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
 import scala.util.{Failure, Success}
 
-class FileParserTest extends FunSuite {
+class FileParserTest extends AnyFunSuite {
 
   val frameworkPathAba = "examples/unit_test_example.aba"
   val frameworkPathApx = "examples/unit_test_example.apx"

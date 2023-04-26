@@ -3,10 +3,10 @@ package aba.move
 import aba.framework.Rule
 import aba.reasoner.DisputeState
 import aba.move.DisputeAdvancement.{DAB, DABF, DC, DF, DS}
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
 
-class OB1MoveTest extends FunSuite {
+class OB1MoveTest extends AnyFunSuite {
 
   //testInitialState()
 

@@ -1,10 +1,10 @@
 package aba.reasoner
 
 import aba.framework.Rule
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
 
-class DisputeStateTest extends FunSuite {
+class DisputeStateTest extends AnyFunSuite {
 
 
   val pStatements = Set("a", "b", "c")

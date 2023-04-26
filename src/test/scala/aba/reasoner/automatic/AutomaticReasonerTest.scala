@@ -9,7 +9,7 @@ import aba.reasoner.DisputeState
 import aba.reasoner.automatic.Semantics.{Admissible, Complete, Semantics, Stable}
 import aba.reasoner.automatic2.DisputeStateAuto2
 import aba.reasoner.automatic2.movesPreferenceBased.MovesPreferenceBasedAutomaticReasoner2
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
 // TODO: the same structure as main? How to distinguish
 import aba.reasoner.automatic.Semantics
@@ -18,7 +18,7 @@ import scala.io.Source
 import scala.util.{Failure, Random, Success}
 
 
-class AutomaticReasonerTest extends FunSuite {
+class AutomaticReasonerTest extends AnyFunSuite {
 
   val INSTANCE_GOAL_RESULTS_FILE_LOC = "./testResources/aspforaba_results.csv"
 
