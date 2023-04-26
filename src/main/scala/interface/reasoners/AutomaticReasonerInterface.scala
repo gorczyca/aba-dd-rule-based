@@ -11,7 +11,7 @@ import scala.annotation.tailrec
 
 object AutomaticReasonerInterface {
 
-  def findSuccessfulDerivations2(onlyOne: Boolean, performNMoves: Option[Int] = None)(implicit programState: ProgramState): ProgramState = {
+  def findSuccessfulDerivations2(onlyOne: Boolean, performNMoves: Option[Int] = None, generateABRep: Boolean = false, findAndReturn: Boolean = false)(implicit programState: ProgramState): ProgramState = {
 
     // TODO: clean
     val framework = programState.framework
@@ -59,14 +59,19 @@ object AutomaticReasonerInterface {
           (successfulHead.performedMoves, successfulHead.dState)
 
         case (restDS, successfulHead :: _, _, duration) =>
-          println(s"Successful derivation found in $duration.")
-          generateABRepresentation(over = Some(true))(programState.copy(currentDState = successfulHead.dState))
-          println(successfulHead.performedMovesToString().mkString("\n"))
-          println("Press ENTER to finish, ; to find another one")
-          getUserInput match {
-            case ";" => findSuccessfulDerivationsRec2(restDS)
-            case _ => (successfulHead.performedMoves, successfulHead.dState)
+          println(s"Finished in $duration")
+          // TODO: this is the culprit - this should be only explicitly called for
+          if (generateABRep) {
+            generateABRepresentation(over = Some(true))(programState.copy(currentDState = successfulHead.dState))
           }
+          println(successfulHead.performedMovesToString().mkString("\n"))
+          if (!findAndReturn) {
+            println("Press ENTER to finish, ; to find another one")
+            getUserInput match {
+              case ";" => findSuccessfulDerivationsRec2(restDS)
+              case _ => (successfulHead.performedMoves, successfulHead.dState)
+            }
+          } else (successfulHead.performedMoves, successfulHead.dState)
         case (statesAfterNMoves, Nil, _, _) => // TODO: at worst add if to the case
 
           // TODO: when doing this, we do not want ignoring moves, because it does not say anything
