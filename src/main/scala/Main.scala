@@ -16,6 +16,7 @@ import interface.dotConverters.ABRepresentationInterface.generateABRepresentatio
 import interface.dotConverters.RuleDotRepresentationInterface.generateRuleRepresentation
 import interface.InputProcessorInterface.processUserInput
 
+import interface.reasoners.AutomaticReasonerInterface.findSuccessfulDerivations2
 
 import java.io.PrintWriter
 import scala.annotation.tailrec
@@ -40,6 +41,26 @@ object Main {
               case _ => fram
             }
 
+            // TODO: take into account the config!!! in the constructor
+            val initialState = ProgramState.initial
+
+            val autoReasoner = initialState.automaticReasoner.copy(
+              tCriteriaType = config.tCriteriaType,
+              dAdvancementType = config.dAdvancementType,
+              dfs = config.dfs,
+              startWithAdmissible = config.startWithAdmissible,
+              preferenceOrdering = config.preferenceOrdering,
+              pRuleHeadChoice = config.pRuleHeadChoice,
+              oRuleHeadChoice = config.oRuleHeadChoice,
+              pRuleChoice = config.pRuleChoiceType,
+              oRuleChoice = config.oRuleChoiceType)
+
+            // if SOLVE mode simply try to solve and return
+            if (config.solve) {
+              findSuccessfulDerivations2(onlyOne = true, findAndReturn = true)(initialState)
+              return
+            }
+
             println("\n" +
               "+=======================+\n" +
               "|  Derivation started.  |\n" +
@@ -55,14 +76,10 @@ object Main {
               case _ =>
             }
 
-            // TODO: take into account the config!!! in the constructor
-            val initialState = ProgramState.initial
-
-
             disputeDerivation(initialState
               .copy(tCriteria = config.tCriteriaType,
                 dAdvancement = config.dAdvancementType,
-                automaticReasoner = initialState.automaticReasoner.copy(tCriteriaType = config.tCriteriaType, dAdvancementType = config.dAdvancementType)))
+                automaticReasoner = autoReasoner))
 
           case _ =>
         }
