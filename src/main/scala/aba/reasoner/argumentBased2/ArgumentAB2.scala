@@ -54,7 +54,7 @@ class ArgumentNode(val statement: String,
 
   override def toString: String = if (children.isEmpty) s"$statement" else s"$statement ← [${children.map(_.toString).mkString(",")}]"
 
-  def uid: String = s"arg_node_${statement}_$uuid"
+  def uid: String = s"arg_node_${statement.replaceAll("""(,|\(|\)|\s)""","_")}_$uuid"
 
   def flattenTree: Seq[ArgumentNode] = {
    children.map(_.flattenTree).toSeq.flatten :+ this
@@ -237,8 +237,7 @@ class ArgumentTree(val root: ArgumentNode,
   //override def toString: String = s"${root.toString}\nENDPOINTS:\n${endpoints.map{ case (argNode, rules) => s"${argNode.statement}: {${rules.mkString(",")}}" }}"
 
 //  def uid: String = s"argument_${root.data}_${ if (hashCode() < 0) "an" + Math.abs(hashCode()).toString else "a" + hashCode().toString }"
-  def uid: String = s"argument_${root.statement}_$uuid"
-
+  def uid: String = s"argument_${root.statement.replaceAll("""(,|\(|\)|\s)""","_")}_$uuid"
 
   def dCopy(rule: Rule)(implicit framework: Framework): ArgumentTree = {
     val relevantEndpoints = this.endpoints.filter(_._1.statement == rule.head) // take all endpoints with head as current rule
