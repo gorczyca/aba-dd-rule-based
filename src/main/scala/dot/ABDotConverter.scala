@@ -69,6 +69,12 @@ object ABDotConverter {
       .filter(filterConflicted)
       .filter(filterIncomplete)
 
+    // TODO: when trying to show also the opp. arguments
+//    val oppArgs = DisputeStateAB2.create_arguments(dState.oStatements -- dState.pStatements, dState.bRules)
+//      .filter(filterCircular)
+//      .filter(filterConflicted)
+//      .filter(filterIncomplete)
+
     // maximality
     val oppArgs2 = oppArgs.filter(arg => !(oppArgs - arg).exists(otherArg => arg.rulesUsed.subsetOf(otherArg.rulesUsed)))
 
@@ -162,8 +168,25 @@ object ABDotConverter {
 
   }
 
-  def getLabel(statement: String): String = {
+  def getLabel(str: String): String = {
+    val sizesMap = Map(
+      10 -> 1,
+      50 -> 2,
+      90 -> 3,
+      120 -> 4,
+      150 -> 5,
+      999999999 -> 6 // TODO
+    )
 
+    val stmtLen = str.length
+    // find smallest number bigger than length
+    val upperBound = sizesMap.keys.filter(_ > stmtLen).min
+    val noLines = sizesMap(upperBound)
+    val lineLength = scala.math.ceil(stmtLen.toDouble / noLines).toInt
+    str.grouped(lineLength).toList.mkString("\n")
+  }
+
+  def getLabelOld(statement: String): String = {
     val maxLength = 3
 
     val splits = "((?<=[A-Z])|(?=[A-Z]))".r.split(statement).toList

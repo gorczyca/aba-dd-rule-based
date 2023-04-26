@@ -67,7 +67,8 @@ object ABRepresentationInterface {
     // assumptions used with PF2 that are not contained in any rule
     val oppAssumptionGoals = ((dState.bStatements -- dState.defences) intersect framework.assumptions) -- dState.bRules.flatMap(_.statements)
 
-    val opponentGoals = (dState.defenceContraries intersect dState.bStatements) union oppAssumptionGoals // those that actually have been uttered
+//    val opponentGoals = (dState.defenceContraries intersect dState.bStatements) union oppAssumptionGoals union (dState.oStatements -- dState.pStatements) // those that actually have been uttered
+    val opponentGoals = (dState.defenceContraries intersect dState.bStatements) union oppAssumptionGoals // TODO: rollback
     val oppArgs = DisputeStateAB2.create_arguments(opponentGoals, dState.bRules)(framework)
       .filter(filterCircular)
       .filter(filterConflicted)
