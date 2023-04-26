@@ -30,14 +30,16 @@ object CommandLineParser {
         // TODO:
         .action((x, c) => c.copy(inputFormat = x))
         .validate {
-          case "aba" | "apx" => success
-          case _ => failure("Input format must be one of: aba or apx ")
+          case "aba" | "apx" | "iccma" => success
+          case _ => failure("Input format must be one of:\n aba\n apx\n iccma")
         }
-        .text("Input format. Possible values are aba (default) and apx")
+        .text("Input format. Possible values are aba (default), apx and iccma")
         .valueName("<input format>"),
       opt[String]('g', "goal")
         .action((x, c) => c.copy(goal = Some(x))), // TODO: all options for strategies, termination criteria, advancement types
       // automatic reasoner options
+      opt[Unit]('s', "solve")
+        .action((_, c) => c.copy(solve = true)),
       opt[String]("tc")
         .action((x, c) => {
           val tCriteria = x.toLowerCase match {

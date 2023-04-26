@@ -12,7 +12,10 @@ abstract class FileParser extends RegexParsers {
    *
    * @return String parser of an identifier.
    */
-  def identifier: Parser[String] = """[a-zA-Z_$][a-zA-Z_$0-9]*""".r ^^ { _.toString }
+  def identifier: Parser[String] = """[a-zA-Z_$0-9]+""".r
+  // def identifier: Parser[String] = """[a-zA-Z_$][a-zA-Z_$0-9]*""".r ^^ { _.toString }
+  // TODO: also allow for atoms, function symbols etc
+  // def identifier: Parser[String] = """\w+(\(\w+(,\w+)*\))?""".r ^^ { _.toString }
 
   /** Returns a parser of a set of identifiers.
    *
@@ -20,13 +23,13 @@ abstract class FileParser extends RegexParsers {
    */
   def fields: Parser[Set[String]] = (identifier~",".?).* ^^ { _.map(_._1).toSet } // create a sorted set out of a set
 
-  /** Returns a parser of a rule.
+  /** Returns a parser of a [[Rule]].
    *
    * @return Rule parser.
    */
   def rule: Parser[Rule]
 
-  /** Returns a parser of a contrary.
+  /** Returns a parser of a [[Contrary]].
    *
    * @return Contrary parser.
    */
@@ -93,6 +96,7 @@ object FileParser {
     val parser: FileParser = parserType match {
       case "apx" => ApxParser
       case "aba" => AbaParser
+      case "iccma" => IccmaParser
     }
 
     Using(Source.fromFile(filePath, enc = "UTF-8")) {

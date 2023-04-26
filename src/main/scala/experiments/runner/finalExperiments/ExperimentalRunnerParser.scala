@@ -36,10 +36,10 @@ object ExperimentalRunnerParser {
         // TODO:
         .action((x, c) => c.copy(inputFormat = x))
         .validate {
-          case "aba" | "apx" => success
-          case _ => failure("Input format must be one of: aba or apx ")
+          case "aba" | "apx" | "iccma" => success
+          case _ => failure("Input format must be one of: \n aba\n apx \n iccma")
         }
-        .text("Input format. Possible values are aba (default) and apx")
+        .text("Input format. Possible values are aba (default), apx, iccma")
         .valueName("<input format>"),
 
       // TODO: not for experiments

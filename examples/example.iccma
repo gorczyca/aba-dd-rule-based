@@ -1,0 +1,11 @@
+p aba 8
+# this is a comment
+a 1
+a 2
+a 3
+c 1 6
+c 2 7
+c 3 8
+r 5
+r 6 2 3
+r 4 5 1
