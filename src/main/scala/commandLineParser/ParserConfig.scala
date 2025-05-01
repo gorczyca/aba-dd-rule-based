@@ -17,6 +17,14 @@ case class ParserConfig(
                          quiet: Boolean = false, // if true will only print YES / NO
                          // default automatic reasoner options options
                          dfs: Boolean = true,
+                         // added now: START
+                         approx: Boolean = false,
+                         propP: Double = 1.0,
+                         oppP: Double = 1.0,
+                         sampleBefore: Boolean = true,
+                         // added new: END
+                         //...
+                         //
                          tCriteriaType: TerminationCriteriaType = TA,
                          dAdvancementType: DisputeAdvancementType = DABF,
                          startWithAdmissible: Boolean = true,
@@ -32,4 +40,5 @@ case class ParserConfig(
                          pRuleHeadChoice: RuleHeadChoiceType = LeastRules,
                          //oRuleHeadChoice: RuleHeadChoiceType = MostRules,
                          oRuleHeadChoice: RuleHeadChoiceType = LeastRules,
+
                        )

@@ -180,7 +180,42 @@ object CommandLineParser {
           case "l1s" => RuleChoice2.LookAhead1Step
         }
         c.copy(oRuleChoiceType = orc)
-      }))
+      }),
+
+    // added now
+    opt[String]("approx")
+      .action((x, c) => {
+        val approx = x.toLowerCase match {
+          case "0" => false
+          case "1" => true
+        }
+        c.copy(approx = approx)
+      }),
+
+      //
+      opt[String]("sampbef")
+      .action((x, c) => {
+        val sampbef = x.toLowerCase match {
+          case "0" => false
+          case "1" => true
+        }
+        c.copy(sampleBefore = sampbef)
+      }),
+
+      //
+      opt[String]("propp")
+      .action((propPStr, c) => {
+        c.copy(propP = propPStr.toDouble)
+      }),
+
+      //
+      opt[String]("oppp")
+        .action((OppStr, c) => {
+          c.copy(oppP = OppStr.toDouble)
+        }),
+
+    )
+
   }
 
   def parse(args: Array[String]): Option[ParserConfig] = OParser.parse(parser, args, ParserConfig())

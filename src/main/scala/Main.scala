@@ -3,8 +3,11 @@ import aba.fileParser.FileParser
 import scala.language.implicitConversions
 import aba.framework.Framework
 import aba.reasoner.DisputeState
+import aba.reasoner.approximate.ApproximateReasoner
+import aba.reasoner.automatic2.DisputeStateAuto2
 import commandLineParser.CommandLineParser
 import dot.DotConverter
+import experiments.runner.finalExperiments.ExperimentalParserConfig
 import interface.ProgramState
 
 import scala.util.{Failure, Success}
@@ -55,11 +58,37 @@ object Main {
               pRuleChoice = config.pRuleChoiceType,
               oRuleChoice = config.oRuleChoiceType)
 
-            // if SOLVE mode simply try to solve and return
-            if (config.solve) {
-              findSuccessfulDerivations2(onlyOne = true, findAndReturn = true, quiet = config.quiet)(initialState)
-              return
+
+
+            (config.solve, config.quiet, config.approx) match {
+              case (true, true, false) => {
+                findSuccessfulDerivations2(onlyOne = true, findAndReturn = true, quiet = config.quiet)(initialState)
+                return
+              }
+              case (true, true, true) => {
+
+                val approxReasoner = ApproximateReasoner(autoReasoner, config.propP, config.oppP, framework, static=config.sampleBefore)
+
+                // TODO: get initial state somehow from reasoner?
+                val (tc, ad) = initialState.automaticReasoner.initialTCAndDA
+                val initialDStateAuto = new DisputeStateAuto2(initialState.currentDState, Set.empty, Set.empty, Nil, tc, ad)
+                val initialDSs = List(initialDStateAuto)
+
+                approxReasoner.getNewIncompleteSuccessfulDSAndStackRec(initialDSs, Nil)(framework, onlyOne = true) match {
+                  case (_, Nil, _, _) => println("NO")
+                  case (_, _::_, _, _) => println("YES")
+                }
+                return
+              }
+
+              case _ =>
             }
+
+            // if SOLVE mode simply try to solve and return
+            //if (config.solve) {
+            //  findSuccessfulDerivations2(onlyOne = true, findAndReturn = true, quiet = config.quiet)(initialState)
+            //  return
+            //}
 
             println("\n" +
               "+=======================+\n" +

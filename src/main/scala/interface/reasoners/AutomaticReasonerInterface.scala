@@ -11,7 +11,13 @@ import scala.annotation.tailrec
 
 object AutomaticReasonerInterface {
 
-  def findSuccessfulDerivations2(onlyOne: Boolean, performNMoves: Option[Int] = None, generateABRep: Boolean = false, findAndReturn: Boolean = false, quiet: Boolean = false)(implicit programState: ProgramState): ProgramState = {
+  def findSuccessfulDerivations2(
+                                  onlyOne: Boolean,
+                                  performNMoves: Option[Int] = None,
+                                  generateABRep: Boolean = false,
+                                  findAndReturn: Boolean = false,
+                                  quiet: Boolean = false)
+                                (implicit programState: ProgramState): ProgramState = {
 
     // TODO: clean
     val framework = programState.framework
